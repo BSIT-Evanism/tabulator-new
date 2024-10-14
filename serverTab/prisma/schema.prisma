@@ -1,0 +1,102 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Admin {
+  id         String  @id
+  email      String
+  password   String
+  isLoggedIn Boolean @default(false)
+}
+
+model Contestant {
+  id                      String                    @id
+  name                    String
+  gender                  Gender
+  age                     Int
+  department              String
+  contestantNumber        Int
+  FormalAttireScores      FormalAttireScores[]
+  QuestionAndAnswerScores QuestionAndAnswerScores[]
+  SwimwearScores          SwimwearScores[]
+}
+
+model FormalAttireScores {
+  id           Int                     @id @default(autoincrement())
+  judgeId      String
+  contestantId String
+  score        Int
+  subCategory  FormalAttireSubCategory
+  Contestant   Contestant              @relation(fields: [contestantId], references: [id])
+  Judge        Judge                   @relation(fields: [judgeId], references: [id])
+}
+
+model Judge {
+  id                      String                    @id
+  name                    String
+  generatedPassword       String
+  isLoggedIn              Boolean                   @default(false)
+  FormalAttireScores      FormalAttireScores[]
+  QuestionAndAnswerScores QuestionAndAnswerScores[]
+  SwimwearScores          SwimwearScores[]
+}
+
+model PageantState {
+  id    Int   @id @default(autoincrement())
+  state State
+}
+
+model SwimwearScores {
+  id           Int                 @id @default(autoincrement())
+  judgeId      String
+  contestantId String
+  subCategory  SwimwearSubCategory
+  score        Int
+  Contestant   Contestant          @relation(fields: [contestantId], references: [id])
+  Judge        Judge               @relation(fields: [judgeId], references: [id])
+}
+
+model QuestionAndAnswerScores {
+  id           Int                          @id @default(autoincrement())
+  judgeId      String
+  contestantId String
+  score        Int
+  subCategory  QuestionAndAnswerSubCategory
+  Contestant   Contestant                   @relation(fields: [contestantId], references: [id])
+  Judge        Judge                        @relation(fields: [judgeId], references: [id])
+}
+
+enum FormalAttireSubCategory {
+  ATTIRE_AND_CARRIAGE
+  STAGE_PRESENCE
+  POISE_AND_BEARING
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum QuestionAndAnswerSubCategory {
+  INTELLIGENCE
+  POISE_AND_BEARING
+}
+
+enum SwimwearSubCategory {
+  BEAUTY_OF_FIGURE
+  STAGE_PRESENCE
+  POISE_AND_BEARING
+}
+
+enum State {
+  swimwear
+  formalAttire
+  questionAndAnswer
+  finalRound
+}
