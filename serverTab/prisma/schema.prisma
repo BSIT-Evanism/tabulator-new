@@ -21,6 +21,7 @@ model Contestant {
   age                     Int
   department              String
   contestantNumber        Int
+  FinalRoundScores        FinalRoundScores[]
   FormalAttireScores      FormalAttireScores[]
   QuestionAndAnswerScores QuestionAndAnswerScores[]
   SwimwearScores          SwimwearScores[]
@@ -41,6 +42,7 @@ model Judge {
   name                    String
   generatedPassword       String
   isLoggedIn              Boolean                   @default(false)
+  FinalRoundScores        FinalRoundScores[]
   FormalAttireScores      FormalAttireScores[]
   QuestionAndAnswerScores QuestionAndAnswerScores[]
   SwimwearScores          SwimwearScores[]
@@ -71,6 +73,23 @@ model QuestionAndAnswerScores {
   Judge        Judge                        @relation(fields: [judgeId], references: [id])
 }
 
+model FinalRoundScores {
+  id           Int                   @id @default(autoincrement())
+  judgeId      String
+  contestantId String
+  subCategory  FinalRoundSubCategory
+  score        Int
+  Contestant   Contestant            @relation(fields: [contestantId], references: [id])
+  Judge        Judge                 @relation(fields: [judgeId], references: [id])
+}
+
+model TabulationDesignVariables {
+  id        Int    @id @default(autoincrement())
+  color     String
+  iconName  String
+  eventName String
+}
+
 enum FormalAttireSubCategory {
   ATTIRE_AND_CARRIAGE
   STAGE_PRESENCE
@@ -85,7 +104,7 @@ enum Gender {
 
 enum QuestionAndAnswerSubCategory {
   INTELLIGENCE
-  POISE_AND_BEARING
+  POISE_AND_PERSONALITY
 }
 
 enum SwimwearSubCategory {
@@ -99,4 +118,9 @@ enum State {
   formalAttire
   questionAndAnswer
   finalRound
+}
+
+enum FinalRoundSubCategory {
+  INTELLIGENCE
+  POISE_AND_PERSONALITY
 }

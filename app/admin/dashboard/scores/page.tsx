@@ -84,8 +84,13 @@ export default async function ScoresPage() {
         return { contestant, categories, overallAverage }
     })
 
-    // Sort contestants by overall average
-    organizedScores.sort((a, b) => b.overallAverage - a.overallAverage)
+    // Separate contestants by gender
+    const maleContestants = organizedScores.filter(score => score.contestant.gender === 'MALE')
+    const femaleContestants = organizedScores.filter(score => score.contestant.gender === 'FEMALE')
+
+    // Sort each group separately
+    maleContestants.sort((a, b) => b.overallAverage - a.overallAverage)
+    femaleContestants.sort((a, b) => b.overallAverage - a.overallAverage)
 
     return (
         <div className="p-6 space-y-8">
@@ -93,55 +98,69 @@ export default async function ScoresPage() {
             <Link href="/admin/dashboard">
                 <Button variant="outline" className="absolute top-[10vh] left-4">Back to Dashboard</Button>
             </Link>
-            {organizedScores.map(({ contestant, categories, overallAverage }, index) => (
-                <Card key={contestant.id} className={`rounded-lg ${index === 0 ? 'bg-yellow-100 border-4 border-yellow-400' :
-                    index === 1 ? 'bg-gray-100 border-4 border-gray-400' :
-                        index === 2 ? 'bg-amber-100 border-4 border-amber-700' :
-                            'bg-slate-50'
-                    }`}>
-                    <CardHeader>
-                        <CardTitle className="flex items-center">
-                            {index === 0 && <span className="text-yellow-500 mr-2">🥇 1st</span>}
-                            {index === 1 && <span className="text-gray-500 mr-2">🥈 2nd</span>}
-                            {index === 2 && <span className="text-amber-700 mr-2">🥉 3rd</span>}
-                            <span className="mr-2">#{index + 1}</span>
-                            Contestant: {contestant.name} - Overall Average: {overallAverage.toFixed(2)}
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        {categories.map((category) => (
-                            <div key={category.name} className="mb-8">
-                                <h3 className="text-2xl font-semibold mb-4 text-indigo-700">
-                                    {formatText(category.name)} - Average: {category.average.toFixed(2)}
-                                </h3>
-                                {category.subCategories.map((subCategory) => (
-                                    <div key={subCategory.name} className="mb-6">
-                                        <h4 className="text-xl font-medium mb-3 text-indigo-600">
-                                            {formatText(subCategory.name)} - Average: {subCategory.average.toFixed(2)}
-                                        </h4>
-                                        <Table>
-                                            <TableHeader>
-                                                <TableRow>
-                                                    <TableHead>Judge</TableHead>
-                                                    <TableHead>Score</TableHead>
-                                                </TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                                {subCategory.judgeScores.map(({ judge, score }) => (
-                                                    <TableRow key={judge.id}>
-                                                        <TableCell>Judge: {judge.name}</TableCell>
-                                                        <TableCell>Score: {score}</TableCell>
-                                                    </TableRow>
-                                                ))}
-                                            </TableBody>
-                                        </Table>
-                                    </div>
-                                ))}
-                            </div>
-                        ))}
-                    </CardContent>
-                </Card>
-            ))}
+
+            <div className="flex flex-col md:flex-row gap-8">
+                <div className="flex-1 mb-8">
+                    <h2 className="text-2xl font-bold text-center text-blue-700 mb-4">Male Contestants</h2>
+                    {renderContestants(maleContestants)}
+                </div>
+                <div className="flex-1 mb-8">
+                    <h2 className="text-2xl font-bold text-center text-pink-700 mb-4">Female Contestants</h2>
+                    {renderContestants(femaleContestants)}
+                </div>
+            </div>
         </div>
     )
+}
+
+function renderContestants(contestants: any[]) {
+    return contestants.map(({ contestant, categories, overallAverage }, index) => (
+        <Card key={contestant.id} className={`rounded-lg mb-4 ${index === 0 ? 'bg-yellow-100 border-4 border-yellow-400' :
+            index === 1 ? 'bg-gray-100 border-4 border-gray-400' :
+                index === 2 ? 'bg-amber-100 border-4 border-amber-700' :
+                    'bg-slate-50'
+            }`}>
+            <CardHeader>
+                <CardTitle className="flex items-center">
+                    {index === 0 && <span className="text-yellow-500 mr-2">🥇 1st</span>}
+                    {index === 1 && <span className="text-gray-500 mr-2">🥈 2nd</span>}
+                    {index === 2 && <span className="text-amber-700 mr-2">🥉 3rd</span>}
+                    <span className="mr-2">#{index + 1}</span>
+                    Contestant: {contestant.name} - Overall Average: {overallAverage.toFixed(2)}
+                </CardTitle>
+            </CardHeader>
+            <CardContent>
+                {categories.map((category) => (
+                    <div key={category.name} className="mb-8">
+                        <h3 className="text-2xl font-semibold mb-4 text-indigo-700">
+                            {formatText(category.name)} - Average: {category.average.toFixed(2)}
+                        </h3>
+                        {category.subCategories.map((subCategory) => (
+                            <div key={subCategory.name} className="mb-6">
+                                <h4 className="text-xl font-medium mb-3 text-indigo-600">
+                                    {formatText(subCategory.name)} - Average: {subCategory.average.toFixed(2)}
+                                </h4>
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Judge</TableHead>
+                                            <TableHead>Score</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {subCategory.judgeScores.map(({ judge, score }) => (
+                                            <TableRow key={judge.id}>
+                                                <TableCell>Judge: {judge.name}</TableCell>
+                                                <TableCell>Score: {score}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        ))}
+                    </div>
+                ))}
+            </CardContent>
+        </Card>
+    ))
 }

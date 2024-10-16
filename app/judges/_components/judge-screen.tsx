@@ -9,8 +9,9 @@ import { JudgeLoginAction } from "../_actions/judge-login"
 import { CustomToast } from "@/components/custom-toast"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
+import { TabulationDesignVariables } from "@prisma/client"
 
-export function JudgesScreen() {
+export function JudgesScreen({ data }: { data: TabulationDesignVariables | null }) {
     const router = useRouter()
     const [isOpen,] = useState('false')
     const [password, setPassword] = useState('')
@@ -21,11 +22,11 @@ export function JudgesScreen() {
 
     const { execute, status, } = useAction(JudgeLoginAction, {
         onSuccess: (ev) => {
-            toast.custom((t) => <CustomToast title={t} state='success' message={`Judge ${ev.data?.judge} logged-in successfully`} />)
+            toast.custom((t) => <CustomToast title={data?.eventName || "Model Pageant 2024"} t={t} state='success' message={`Judge ${ev.data?.judge} logged-in successfully`} />)
             router.push("/judges/scoring")
         },
         onError: (ev) => {
-            toast.custom((t) => <CustomToast title={t} state='error' message={`Error: ${ev.error.serverError} ${ev.error.validationErrors}`} />)
+            toast.custom((t) => <CustomToast title={data?.eventName || "Model Pageant 2024"} t={t} state='error' message={`Error: ${ev.error.serverError} ${ev.error.validationErrors}`} />)
         }
     })
 
@@ -63,10 +64,15 @@ export function JudgesScreen() {
                 </div>
             </div>)}
             <AnimatePresence>
-                <motion.div layout className="w-full h-full flex justify-center flex-col items-center bg-sec gap-4">
+                <motion.div layout className={cn("w-full h-full flex justify-center flex-col bg-gradient-to-br from-main to-purple-800 items-center gap-4", data?.color ? `bg-[${data.color}]` : "bg-pink-300")}>
                     <motion.div layout className="flex flex-col justify-center items-center gap-4">
-                        <GlobeIcon className="w-1/4 h-1/4 text-white animate-spin-y-10" />
-                        <h1 className="scroll-m-20 text-4xl font-extrabold tracking-tight lg:text-5xl text-white">Welcome to the MMBU 2024</h1>
+                        {data?.iconName ? <img src={`/uploads/${data.iconName}`} alt="Event Icon" className="w-1/4 h-1/4 object-contain animate-spin-y-10" /> : <GlobeIcon className="w-1/4 h-1/4 text-white animate-spin-y-10" />}
+                        <h1 className="scroll-m-20 text-5xl font-extrabold tracking-tight py-4 leading-relaxed lg:text-6xl text-transparent bg-clip-text bg-gradient-to-r from-pink-400 via-gold-500 to-purple-600 animate-gradient-x">
+                            Welcome to the Spectacular
+                            <span className="block mt-2 text-7xl font-black text-white drop-shadow-[0_5px_5px_rgba(0,0,0,0.5)] animate-pulse">
+                                {data?.eventName || "Model Pageant 2024"}
+                            </span>
+                        </h1>
                         <div>
                             <div className="flex justify-center items-center gap-4 p-1 bg-white rounded-lg overflow-hidden relative">
                                 <div
@@ -75,7 +81,7 @@ export function JudgesScreen() {
                                 />
                                 <input
                                     type={showPassword ? "text" : "password"}
-                                    className="w-64 h-14 p-2 text-2xl rounded-md bg-main z-10 focus:outline-none"
+                                    className={cn("w-64 h-14 p-2 text-2xl rounded-md z-10 focus:outline-none", data?.color ? `bg-[${data.color}]` : "bg-pink-300")}
                                     value={password}
                                     onChange={(e) => {
                                         setPassword(e.target.value)
@@ -84,7 +90,7 @@ export function JudgesScreen() {
                                 />
                                 <button
                                     onClick={() => setShowPassword(!showPassword)}
-                                    className="z-10 p-2 bg-main rounded-md"
+                                    className={cn("z-10 p-2 bg-main rounded-md", data?.color ? `bg-[${data.color}]` : "bg-pink-300")}
                                 >
                                     {showPassword ? <EyeOff className="text-white" /> : <Eye className="text-white" />}
                                 </button>

@@ -1,55 +1,66 @@
-'use client'
 
+import { Crown, Star, Users, Camera } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Crown } from "lucide-react"
 import Link from "next/link"
+import prisma from "@/lib/db"
+import { cn } from "@/lib/utils"
 
-export function HomeScreen() {
+export async function HomeScreen() {
+
+  const data = await prisma.tabulationDesignVariables.findFirst()
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-pink-100 to-purple-100 flex flex-col items-center justify-center p-4">
-      <header className="text-center mb-8">
-        <h1 className="text-4xl font-bold text-pink-600 mb-2 flex items-center justify-center">
-          <Crown className="mr-2 h-8 w-8 text-yellow-400" />
-          Cute Model Pageant
-        </h1>
-        <p className="text-xl text-purple-600">MMBU 2024</p>
-      </header>
-
-      <main className="text-center mb-12">
-        <div className="mb-8">
-          <svg
-            className="w-48 h-48 mx-auto"
-            viewBox="0 0 200 200"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <circle cx="100" cy="100" r="80" fill="#FFC0CB" />
-            <circle cx="70" cy="80" r="10" fill="#FFF" />
-            <circle cx="130" cy="80" r="10" fill="#FFF" />
-            <path d="M70 110 Q100 130 130 110" fill="none" stroke="#FF69B4" strokeWidth="5" />
-          </svg>
-        </div>
-        <p className="text-lg text-gray-700 mb-8">
-          Welcome to MMBU 2024
-          <br />
-          Choose your role to get started:
-        </p>
-      </main>
-
-      <div className="flex flex-col sm:flex-row gap-4">
-        <Link href="/judges">
-          <Button className="w-48 h-16 text-lg bg-blue-400 hover:bg-blue-500 text-white rounded-full shadow-lg transition-transform transform hover:scale-105">
-            Judges Area
-          </Button>
-        </Link>
-        <Link href="/admin">
-          <Button className="w-48 h-16 text-lg bg-purple-400 hover:bg-purple-500 text-white rounded-full shadow-lg transition-transform transform hover:scale-105">
-            Admin Panel
-          </Button>
-        </Link>
+    <div className={cn("min-h-screen bg-gradient-to-br from-pink-100 flex flex-col items-center justify-center p-4 relative overflow-hidden", data?.color ? data.color : "bg-pink-100")}>
+      {/* Patterned Background */}
+      <div className="absolute inset-0 opacity-10">
+        <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80">
+          <path d="M0 0h80v80H0z" fill="none" />
+          <path d="M20 20c10 0 10 10 20 10s10-10 20-10 10 10 20 10M20 40c10 0 10 10 20 10s10-10 20-10 10 10 20 10M20 60c10 0 10 10 20 10s10-10 20-10 10 10 20 10" stroke="currentColor" strokeWidth="2" fill="none" />
+        </svg>
       </div>
 
-      <footer className="mt-12 text-center text-gray-500">
-        <p>© 2023 Cute Model Pageant. All rights reserved.</p>
+      {/* Main Content */}
+      <div className="max-w-md w-full space-y-8 text-center relative z-10">
+        <div className="space-y-2">
+          <h1 className="text-4xl font-bold tracking-tight text-pink-600 flex items-center justify-center">
+            {data?.iconName ? <img src={`/uploads/${data.iconName}`} alt="Event Icon" className="w-10 h-10 mr-2" /> : <Crown className="w-10 h-10 mr-2 text-yellow-400 animate-pulse" />}
+            Welcome to {data?.eventName ? data.eventName : "Model Pageant 2024"}
+          </h1>
+          <p className="text-xl text-purple-500">Elegance in Motion</p>
+        </div>
+
+        {/* Animated Star Icon */}
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className={cn("w-32 h-32 rounded-full flex items-center justify-center shadow-lg", data?.color ? data.color : "bg-pink-200")}>
+              {data?.iconName ? <img src={`/uploads/${data.iconName}`} alt="Event Icon" className="w-40 h-40" /> : <Star className="w-20 h-20 text-yellow-400 animate-spin-slow" />}
+            </div>
+          </div>
+          <div className="relative z-10 py-16" />
+        </div>
+
+        <div className="space-y-6">
+          <p className="text-gray-600">Choose your role in this spectacular event:</p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Link href="/judges">
+              <Button variant="outline" className="bg-pink-400 hover:bg-pink-500 text-white font-semibold transition-all duration-300 ease-in-out transform hover:scale-105">
+                <Users className="mr-2 h-4 w-4" />
+                Judges Area
+              </Button>
+            </Link>
+            <Link href="/admin">
+              <Button variant="outline" className="bg-purple-400 hover:bg-purple-500 text-white font-semibold transition-all duration-300 ease-in-out transform hover:scale-105">
+                <Camera className="mr-2 h-4 w-4" />
+                Admin Panel
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <footer className="mt-8 text-sm text-gray-600 relative z-10">
+        © 2024 Model Pageant. All rights reserved.
       </footer>
     </div>
   )

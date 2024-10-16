@@ -10,6 +10,7 @@ import Link from 'next/link'
 import StateChanger from './state-changer'
 import { JudgeStatusComponent } from './judge-status-component'
 import { Suspense } from 'react'
+import { ImageUpload } from './image-upload'
 
 export async function AdminDashboardComponent() {
   const judgesCount = await prisma.judge.count()
@@ -33,6 +34,8 @@ export async function AdminDashboardComponent() {
     await prisma.contestant.delete({ where: { id: contestantId } })
     revalidatePath('/admin/dashboard')
   }
+
+  const dataVars = await prisma.tabulationDesignVariables.findFirst()
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -67,6 +70,10 @@ export async function AdminDashboardComponent() {
             </Link>
           </div>
           <ScoreTable />
+        </div>
+        <div className="rounded-xl bg-white p-6 shadow-lg">
+          <h2 className="mb-4 text-xl font-semibold text-purple-800">Upload Images</h2>
+          <ImageUpload eventName={dataVars?.eventName ?? "Model Pageant 2024"} color={dataVars?.color ?? "#FFC8DD"} iconName={dataVars?.iconName ?? "icon.png"} />
         </div>
       </div>
       <div className="space-y-6 row-span-full">

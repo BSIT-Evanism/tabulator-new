@@ -4,7 +4,6 @@ import React, { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { TreePalm, Shirt, MessageSquare, LogOutIcon, Trophy, Heart, ThumbsDown } from 'lucide-react'
@@ -12,10 +11,12 @@ import { Contestant, Judge } from '@prisma/client'
 import { useStateStore } from '@/lib/state-ws'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { judgeLogoutAction } from '../_actions/judge-logout'
-import { getScores, submitSwimwearScore, submitFormalAttireScore, submitQuestionAndAnswerScore } from '../_actions/judge-submit'
+import { submitSwimwearScore, submitFormalAttireScore, submitQuestionAndAnswerScore } from '../_actions/judge-submit'
 import { toast } from 'sonner'
 import { useAction } from 'next-safe-action/hooks'
 import { client } from '@/lib/treaty'
+import { Badge } from '@/components/ui/badge'
+import { CustomToast } from '@/components/custom-toast'
 
 const categories = [
   {
@@ -162,9 +163,11 @@ const ScoreInput = ({ category, contestant, subCategory, value, onChange }: { ca
 
 export function ScoringPageComponent({ contestants, judge }: { contestants: Contestant[], judge: Judge | null }) {
   const [scores, setScores] = useState<Record<string, Record<string, Record<string, number>>>>({})
+  const [initialScores, setInitialScores] = useState<Record<string, Record<string, Record<string, number>>>>({})
   const { currentState, connect, disconnect } = useStateStore()
+  const [hasChanges, setHasChanges] = useState<Record<string, boolean>>({})
 
-  const { execute: executeGetScores } = useAction(getScores)
+  // const { execute: executeGetScores } = useAction(getScores)
   const { execute: executeSubmitSwimwear } = useAction(submitSwimwearScore)
   const { execute: executeSubmitFormalAttire } = useAction(submitFormalAttireScore)
   const { execute: executeSubmitQuestionAndAnswer } = useAction(submitQuestionAndAnswerScore)
@@ -193,7 +196,8 @@ export function ScoringPageComponent({ contestants, judge }: { contestants: Cont
           acc[score.contestantId][score.subCategory] = score.score
           return acc
         }, {} as Record<string, Record<string, number>>)
-        setScores({ ...scores, [category]: formattedScores })
+        setScores(prevScores => ({ ...prevScores, [category]: formattedScores }))
+        setInitialScores(prevScores => ({ ...prevScores, [category]: JSON.parse(JSON.stringify(formattedScores)) }))
       }
     } catch (error) {
       console.error('Error fetching scores:', error)
@@ -201,7 +205,7 @@ export function ScoringPageComponent({ contestants, judge }: { contestants: Cont
     }
   }
 
-  const handleScoreChange = (contestantId: string, category: string, subCategory: string, score: number) => {
+  const handleScoreChange = (contestantId: string, category: string, subCategory: string, score: number | null) => {
     setScores(prevScores => ({
       ...prevScores,
       [category]: {
@@ -212,6 +216,11 @@ export function ScoringPageComponent({ contestants, judge }: { contestants: Cont
         }
       }
     }))
+
+    // Check if the new score is different from the initial score
+    const initialScore = initialScores[category]?.[contestantId]?.[subCategory]
+    const hasChange = score !== initialScore
+    setHasChanges(prev => ({ ...prev, [category]: hasChange || prev[category] || false }))
   }
 
   const handleSubmit = async (category: string) => {
@@ -228,29 +237,57 @@ export function ScoringPageComponent({ contestants, judge }: { contestants: Cont
       return
     }
 
+    let changedScores = 0
+    let failedSubmissions = 0
+
     for (const contestantId in scores[category]) {
       for (const subCategory in scores[category][contestantId]) {
-        try {
-          submitAction({
-            judgeId: judge.id,
-            contestantId,
-            // @ts-expect-error - subCategory type mismatch with API expectation
-            subCategory: subCategory,
-            score: scores[category][contestantId][subCategory]
-          })
-        } catch (error) {
-          console.error('Error submitting score:', error)
-          toast.error(`Failed to submit score for contestant ${contestantId}`)
+        const newScore = scores[category][contestantId][subCategory]
+        const oldScore = initialScores[category]?.[contestantId]?.[subCategory]
+
+        if (newScore !== oldScore) {
+          try {
+            await submitAction({
+              judgeId: judge.id,
+              contestantId,
+              // @ts-expect-error - subCategory type mismatch with API expectation
+              subCategory: subCategory,
+              score: newScore
+            })
+            changedScores++
+          } catch (error) {
+            console.error('Error submitting score:', error)
+            failedSubmissions++
+          }
         }
       }
     }
 
-    toast.success('Scores submitted successfully')
+    if (changedScores > 0) {
+      if (failedSubmissions > 0) {
+        toast.custom((t) => <CustomToast title='Submission Failed' t={t} state="warning" message={`Submitted ${changedScores} changed scores, but ${failedSubmissions} submissions failed.`} />)
+      } else {
+        toast.custom((t) => <CustomToast title='Submission Successful' t={t} state="success" message={`Successfully submitted ${changedScores} changed scores.`} />)
+      }
+      // Update initialScores with the new scores
+      setInitialScores(prevScores => ({
+        ...prevScores,
+        [category]: JSON.parse(JSON.stringify(scores[category]))
+      }))
+      setHasChanges(prev => ({ ...prev, [category]: false }))
+    } else {
+      toast.custom((t) => <CustomToast title='No Changes' t={t} state="info" message="No changes were made to the scores." />)
+    }
   }
 
   const judgeLogout = async () => {
     await judgeLogoutAction()
   }
+
+  // Add this sorting function
+  const sortedContestants = [...contestants].sort((a, b) =>
+    a.contestantNumber - b.contestantNumber
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-100 to-purple-100 p-8">
@@ -291,38 +328,71 @@ export function ScoringPageComponent({ contestants, judge }: { contestants: Cont
                   transition={{ duration: 0.5 }}
                   className="space-y-8"
                 >
-                  <ScrollArea className="h-[60vh] bg-slate-50 p-2 rounded-md">
+                  <ScrollArea className="h-[60vh] bg-slate-50 p-4 rounded-md">
                     <div className="grid grid-cols-2 gap-8">
-                      {contestants.map(contestant => (
-                        <div key={contestant.id} className="space-y-4">
-                          <h3 className="text-lg font-semibold">Contestant {contestant.contestantNumber}</h3>
-                          {category.subCategories.map(subCategory => (
-                            <div key={subCategory} className="flex items-center space-x-4 w-fit">
-                              <Label htmlFor={`${category.id}-${contestant.id}-${subCategory}`} className="w-40 text-right">{subCategory.replace(/_/g, ' ')}</Label>
-                              <ScoreInput
-                                category={category}
-                                contestant={contestant}
-                                subCategory={subCategory}
-                                value={scores[category.id]?.[contestant.id]?.[subCategory]}
-                                onChange={handleScoreChange}
-                              />
-                              <span className="text-sm text-gray-500 ml-2">
-                                Max: {maxScoresOuter[category.id as keyof typeof maxScoresOuter]?.[subCategory as keyof (typeof maxScoresOuter)[keyof typeof maxScoresOuter]] ?? 15}
-                              </span>
+                      <div className="space-y-4">
+                        {sortedContestants.filter(contestant => contestant.gender === 'MALE').map(contestant => (
+                          <div key={contestant.id} className="space-y-4">
+                            <div className="flex items-center justify-between">
+                              <h3 className="text-lg font-semibold">Contestant {contestant.contestantNumber}</h3>
+                              <Badge variant="outline" className="text-sm uppercase rounded-full bg-blue-500 text-white">MALE</Badge>
                             </div>
-                          ))}
-                        </div>
-                      ))}
+                            {category.subCategories.map(subCategory => (
+                              <div key={subCategory} className="flex items-center space-x-4 w-fit">
+                                <Label htmlFor={`${category.id}-${contestant.id}-${subCategory}`} className="w-40 text-right">{subCategory.replace(/_/g, ' ')}</Label>
+                                <ScoreInput
+                                  category={category}
+                                  contestant={contestant}
+                                  subCategory={subCategory}
+                                  value={scores[category.id]?.[contestant.id]?.[subCategory]}
+                                  onChange={handleScoreChange}
+                                />
+                                <span className="text-sm text-gray-500 ml-2">
+                                  Max: {maxScoresOuter[category.id as keyof typeof maxScoresOuter]?.[subCategory as keyof (typeof maxScoresOuter)[keyof typeof maxScoresOuter]] ?? 15}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                      <div className="space-y-4">
+                        {sortedContestants.filter(contestant => contestant.gender === 'FEMALE').map(contestant => (
+                          <div key={contestant.id} className="space-y-4">
+                            <div className="flex items-center justify-between">
+                              <h3 className="text-lg font-semibold">Contestant {contestant.contestantNumber}</h3>
+                              <Badge variant="outline" className="text-sm uppercase rounded-full bg-pink-500 text-white">FEMALE</Badge>
+                            </div>
+                            {category.subCategories.map(subCategory => (
+                              <div key={subCategory} className="flex items-center space-x-4 w-fit">
+                                <Label htmlFor={`${category.id}-${contestant.id}-${subCategory}`} className="w-40 text-right">{subCategory.replace(/_/g, ' ')}</Label>
+                                <ScoreInput
+                                  category={category}
+                                  contestant={contestant}
+                                  subCategory={subCategory}
+                                  value={scores[category.id]?.[contestant.id]?.[subCategory]}
+                                  onChange={handleScoreChange}
+                                />
+                                <span className="text-sm text-gray-500 ml-2">
+                                  Max: {maxScoresOuter[category.id as keyof typeof maxScoresOuter]?.[subCategory as keyof (typeof maxScoresOuter)[keyof typeof maxScoresOuter]] ?? 15}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </ScrollArea>
                 </motion.div>
               </CardContent>
             </Card>
             <Button
-              className="mt-6 w-full bg-gradient-to-r from-pink-400 to-purple-500 hover:from-pink-500 hover:to-purple-600 text-white"
+              className={`mt-6 w-full ${hasChanges[category.id]
+                  ? 'bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600'
+                  : 'bg-gradient-to-r from-pink-400 to-purple-500 hover:from-pink-500 hover:to-purple-600'
+                } text-white`}
               onClick={() => handleSubmit(category.id)}
             >
-              Submit {category.name} Scores
+              {hasChanges[category.id] ? 'Submit Changes' : 'No Changes to Submit'}
             </Button>
           </TabsContent>
         ))}
