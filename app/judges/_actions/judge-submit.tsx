@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import prisma from '@/lib/db'
-import { SwimwearSubCategory, FormalAttireSubCategory, QuestionAndAnswerSubCategory } from '@prisma/client'
+import { SwimwearSubCategory, FormalAttireSubCategory, QuestionAndAnswerSubCategory, FinalRoundSubCategory } from '@prisma/client'
 import { protectedClient } from '@/lib/safe-action'
 import { z } from 'zod'
 
@@ -10,7 +10,7 @@ const scoreSchema = z.object({
     judgeId: z.string(),
     contestantId: z.string(),
     score: z.number().int().min(0).max(100),
-    subCategory: z.enum(['BEAUTY_OF_FIGURE', 'STAGE_PRESENCE', 'POISE_AND_BEARING', 'ATTIRE_AND_CARRIAGE', 'INTELLIGENCE', 'POISE_AND_PERSONALITY', 'FINAL_ROUND'])
+    subCategory: z.enum(['BEAUTY_OF_FIGURE', 'STAGE_PRESENCE', 'POISE_AND_BEARING', 'ATTIRE_AND_CARRIAGE', 'INTELLIGENCE', 'POISE_AND_PERSONALITY', 'INTELLIGENCE_AND_WIT', 'POISE_CONFIDENCE_AND_PERSONALITY'])
 })
 
 export const getScores = protectedClient.schema(
@@ -137,6 +137,39 @@ export const submitQuestionAndAnswerScore = protectedClient.schema(scoreSchema).
                         judgeId,
                         contestantId,
                         subCategory: subCategory as QuestionAndAnswerSubCategory,
+                        score
+                    }
+                })
+            }
+        })
+
+        revalidatePath('/judges/scoring')
+        return { success: true }
+    }
+)
+
+export const submitFinalRoundScores = protectedClient.schema(scoreSchema).action(
+    async ({ parsedInput: { judgeId, contestantId, score, subCategory } }) => {
+        await prisma.$transaction(async (tx) => {
+            const existingScore = await tx.finalRoundScores.findFirst({
+                where: {
+                    judgeId,
+                    contestantId,
+                    subCategory: subCategory as FinalRoundSubCategory
+                }
+            })
+
+            if (existingScore) {
+                await tx.finalRoundScores.update({
+                    where: { id: existingScore.id },
+                    data: { score }
+                })
+            } else {
+                await tx.finalRoundScores.create({
+                    data: {
+                        judgeId,
+                        contestantId,
+                        subCategory: subCategory as FinalRoundSubCategory,
                         score
                     }
                 })

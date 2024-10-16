@@ -6,7 +6,7 @@ import { cors } from '@elysiajs/cors';
 import { jwt } from '@elysiajs/jwt';
 import prisma from './db';
 import { bearer } from '@elysiajs/bearer';
-import { SwimwearSubCategory, FormalAttireSubCategory, QuestionAndAnswerSubCategory } from '@prisma/client'
+import { SwimwearSubCategory, FormalAttireSubCategory, QuestionAndAnswerSubCategory, FinalRoundSubCategory } from '@prisma/client'
 
 const stateStream = new Stream();
 
@@ -215,6 +215,116 @@ const app = new Elysia({ prefix: '/api' })
           t.Enum(FormalAttireSubCategory),
           t.Enum(QuestionAndAnswerSubCategory)
         ])
+      }))
+    })
+  })
+  .get("/topcontestants", async () => {
+    const contestants = await prisma.contestant.findMany()
+    const judges = await prisma.judge.findMany()
+
+    const [swimwearScores, formalAttireScores, questionAndAnswerScores, finalRoundScores] = await Promise.all([
+      prisma.swimwearScores.findMany({ include: { Contestant: true, Judge: true } }),
+      prisma.formalAttireScores.findMany({ include: { Contestant: true, Judge: true } }),
+      prisma.questionAndAnswerScores.findMany({ include: { Contestant: true, Judge: true } }),
+      prisma.finalRoundScores.findMany({ include: { Contestant: true, Judge: true } })
+    ])
+
+    const calculateAverage = (scores: number[]) =>
+      scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : 0
+
+    const organizedScores = contestants.map(contestant => {
+      const contestantScores = {
+        swimwear: swimwearScores.filter(s => s.contestantId === contestant.id),
+        formalAttire: formalAttireScores.filter(s => s.contestantId === contestant.id),
+        questionAndAnswer: questionAndAnswerScores.filter(s => s.contestantId === contestant.id),
+        finalRound: finalRoundScores.filter(s => s.contestantId === contestant.id)
+      }
+
+      const categories = [
+        {
+          name: "Swimwear",
+          subCategories: Object.values(SwimwearSubCategory).map(subCategory => ({
+            name: subCategory,
+            judgeScores: judges.map(judge => ({
+              judge,
+              score: contestantScores.swimwear.find(s => s.subCategory === subCategory && s.judgeId === judge.id)?.score || 0
+            })),
+            average: calculateAverage(contestantScores.swimwear.filter(s => s.subCategory === subCategory).map(s => s.score))
+          })),
+          average: calculateAverage(contestantScores.swimwear.map(s => s.score))
+        },
+        {
+          name: "Formal Attire",
+          subCategories: Object.values(FormalAttireSubCategory).map(subCategory => ({
+            name: subCategory,
+            judgeScores: judges.map(judge => ({
+              judge,
+              score: contestantScores.formalAttire.find(s => s.subCategory === subCategory && s.judgeId === judge.id)?.score || 0
+            })),
+            average: calculateAverage(contestantScores.formalAttire.filter(s => s.subCategory === subCategory).map(s => s.score))
+          })),
+          average: calculateAverage(contestantScores.formalAttire.map(s => s.score))
+        },
+        {
+          name: "Question and Answer",
+          subCategories: Object.values(QuestionAndAnswerSubCategory).map(subCategory => ({
+            name: subCategory,
+            judgeScores: judges.map(judge => ({
+              judge,
+              score: contestantScores.questionAndAnswer.find(s => s.subCategory === subCategory && s.judgeId === judge.id)?.score || 0
+            })),
+            average: calculateAverage(contestantScores.questionAndAnswer.filter(s => s.subCategory === subCategory).map(s => s.score))
+          })),
+          average: calculateAverage(contestantScores.questionAndAnswer.map(s => s.score))
+        },
+        {
+          name: "Final Round",
+          subCategories: Object.values(FinalRoundSubCategory).map(subCategory => ({
+            name: subCategory,
+            judgeScores: judges.map(judge => ({
+              judge,
+              score: contestantScores.finalRound.find(s => s.subCategory === subCategory && s.judgeId === judge.id)?.score || 0
+            })),
+            average: calculateAverage(contestantScores.finalRound.filter(s => s.subCategory === subCategory).map(s => s.score))
+          })),
+          average: calculateAverage(contestantScores.finalRound.map(s => s.score))
+        }
+      ]
+
+      const overallAverage = calculateAverage([
+        ...contestantScores.swimwear,
+        ...contestantScores.formalAttire,
+        ...contestantScores.questionAndAnswer,
+        ...contestantScores.finalRound
+      ].map(s => s.score))
+
+      return { contestant, categories, overallAverage }
+    })
+
+    // Separate contestants by gender
+    const maleContestants = organizedScores.filter(score => score.contestant.gender === 'MALE')
+    const femaleContestants = organizedScores.filter(score => score.contestant.gender === 'FEMALE')
+
+    // Sort each group separately
+    const topMales = maleContestants.sort((a, b) => b.overallAverage - a.overallAverage).slice(0, 3)
+    const topFemales = femaleContestants.sort((a, b) => b.overallAverage - a.overallAverage).slice(0, 3)
+
+    return { topMales, topFemales }
+  }, {
+    response: t.Object({
+      topFemales: t.Array(t.Object({
+        contestant: t.Object({
+          id: t.String(),
+          name: t.String(),
+          gender: t.String()
+        })
+      })),
+      topMales: t.Array(t.Object({
+        contestant: t.Object({
+          id: t.String(),
+          name: t.String(),
+          gender: t.String()
+        })
       }))
     })
   })

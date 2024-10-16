@@ -11,7 +11,7 @@ import { Contestant, Judge } from '@prisma/client'
 import { useStateStore } from '@/lib/state-ws'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { judgeLogoutAction } from '../_actions/judge-logout'
-import { submitSwimwearScore, submitFormalAttireScore, submitQuestionAndAnswerScore } from '../_actions/judge-submit'
+import { submitSwimwearScore, submitFormalAttireScore, submitQuestionAndAnswerScore, submitFinalRoundScores } from '../_actions/judge-submit'
 import { toast } from 'sonner'
 import { useAction } from 'next-safe-action/hooks'
 import { client } from '@/lib/treaty'
@@ -41,7 +41,7 @@ const categories = [
     id: 'finalRound',
     name: 'Final Round',
     icon: <Trophy className="w-4 h-4" />,
-    subCategories: ['FINAL_ROUND']
+    subCategories: ['INTELLIGENCE_AND_WIT', 'POISE_CONFIDENCE_AND_PERSONALITY']
   }
 ]
 
@@ -61,7 +61,8 @@ const maxScoresOuter = {
     POISE_AND_PERSONALITY: 25
   },
   finalRound: {
-    FINAL_ROUND: 100
+    INTELLIGENCE_AND_WIT: 50,
+    POISE_CONFIDENCE_AND_PERSONALITY: 50
   }
 }
 
@@ -85,7 +86,8 @@ const ScoreInput = ({ category, contestant, subCategory, value, onChange }: { ca
       POISE_AND_PERSONALITY: 25
     },
     finalRound: {
-      FINAL_ROUND: 100
+      INTELLIGENCE_AND_WIT: 50,
+      POISE_CONFIDENCE_AND_PERSONALITY: 50
     }
   }
 
@@ -161,7 +163,7 @@ const ScoreInput = ({ category, contestant, subCategory, value, onChange }: { ca
   )
 }
 
-export function ScoringPageComponent({ contestants, judge }: { contestants: Contestant[], judge: Judge | null }) {
+export function ScoringPageComponent({ contestants, judge, topMales, topFemales }: { contestants: Contestant[], judge: Judge | null, topMales: string[], topFemales: string[] }) {
   const [scores, setScores] = useState<Record<string, Record<string, Record<string, number>>>>({})
   const [initialScores, setInitialScores] = useState<Record<string, Record<string, Record<string, number>>>>({})
   const { currentState, connect, disconnect } = useStateStore()
@@ -171,6 +173,7 @@ export function ScoringPageComponent({ contestants, judge }: { contestants: Cont
   const { execute: executeSubmitSwimwear } = useAction(submitSwimwearScore)
   const { execute: executeSubmitFormalAttire } = useAction(submitFormalAttireScore)
   const { execute: executeSubmitQuestionAndAnswer } = useAction(submitQuestionAndAnswerScore)
+  const { execute: executeFinalRoundScores } = useAction(submitFinalRoundScores)
 
   useEffect(() => {
     connect()
@@ -230,6 +233,7 @@ export function ScoringPageComponent({ contestants, judge }: { contestants: Cont
       swimwear: executeSubmitSwimwear,
       formalAttire: executeSubmitFormalAttire,
       questionAndAnswer: executeSubmitQuestionAndAnswer,
+      finalRound: executeFinalRoundScores
     }[category]
 
     if (!submitAction) {
@@ -331,54 +335,104 @@ export function ScoringPageComponent({ contestants, judge }: { contestants: Cont
                   <ScrollArea className="h-[60vh] bg-slate-50 p-4 rounded-md">
                     <div className="grid grid-cols-2 gap-8">
                       <div className="space-y-4">
-                        {sortedContestants.filter(contestant => contestant.gender === 'MALE').map(contestant => (
-                          <div key={contestant.id} className="space-y-4">
-                            <div className="flex items-center justify-between">
-                              <h3 className="text-lg font-semibold">Contestant {contestant.contestantNumber}</h3>
-                              <Badge variant="outline" className="text-sm uppercase rounded-full bg-blue-500 text-white">MALE</Badge>
-                            </div>
-                            {category.subCategories.map(subCategory => (
-                              <div key={subCategory} className="flex items-center space-x-4 w-fit">
-                                <Label htmlFor={`${category.id}-${contestant.id}-${subCategory}`} className="w-40 text-right">{subCategory.replace(/_/g, ' ')}</Label>
-                                <ScoreInput
-                                  category={category}
-                                  contestant={contestant}
-                                  subCategory={subCategory}
-                                  value={scores[category.id]?.[contestant.id]?.[subCategory]}
-                                  onChange={handleScoreChange}
-                                />
-                                <span className="text-sm text-gray-500 ml-2">
-                                  Max: {maxScoresOuter[category.id as keyof typeof maxScoresOuter]?.[subCategory as keyof (typeof maxScoresOuter)[keyof typeof maxScoresOuter]] ?? 15}
-                                </span>
+                        {currentState !== 'finalRound' ? sortedContestants
+                          .filter(contestant =>
+                            (contestant.gender === 'MALE'))
+                          .map(contestant => (
+                            <div key={contestant.id} className="space-y-4">
+                              <div className="flex items-center justify-between">
+                                <h3 className="text-lg font-semibold">Contestant {contestant.contestantNumber}</h3>
+                                <Badge variant="outline" className="text-sm uppercase rounded-full bg-blue-500 text-white">MALE</Badge>
                               </div>
-                            ))}
-                          </div>
-                        ))}
+                              {category.subCategories.map(subCategory => (
+                                <div key={subCategory} className="flex items-center space-x-4 w-fit">
+                                  <Label htmlFor={`${category.id}-${contestant.id}-${subCategory}`} className="w-40 text-right">{subCategory.replace(/_/g, ' ')}</Label>
+                                  <ScoreInput
+                                    category={category}
+                                    contestant={contestant}
+                                    subCategory={subCategory}
+                                    value={scores[category.id]?.[contestant.id]?.[subCategory]}
+                                    onChange={handleScoreChange}
+                                  />
+                                  <span className="text-sm text-gray-500 ml-2">
+                                    Max: {maxScoresOuter[category.id as keyof typeof maxScoresOuter]?.[subCategory as keyof (typeof maxScoresOuter)[keyof typeof maxScoresOuter]] ?? 15}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )) : sortedContestants.filter(contestant => (contestant.gender === 'MALE' && topMales.includes(contestant.id))).map(contestant => (
+                            <div key={contestant.id} className="space-y-4">
+                              <div className="flex items-center justify-between">
+                                <h3 className="text-lg font-semibold">Contestant {contestant.contestantNumber}</h3>
+                                <Badge variant="outline" className="text-sm uppercase rounded-full bg-blue-500 text-white">MALE</Badge>
+                              </div>
+                              {category.subCategories.map(subCategory => (
+                                <div key={subCategory} className="flex items-center space-x-4 w-fit">
+                                  <Label htmlFor={`${category.id}-${contestant.id}-${subCategory}`} className="w-40 text-right">{subCategory.replace(/_/g, ' ')}</Label>
+                                  <ScoreInput
+                                    category={category}
+                                    contestant={contestant}
+                                    subCategory={subCategory}
+                                    value={scores[category.id]?.[contestant.id]?.[subCategory]}
+                                    onChange={handleScoreChange}
+                                  />
+                                  <span className="text-sm text-gray-500 ml-2">
+                                    Max: {maxScoresOuter[category.id as keyof typeof maxScoresOuter]?.[subCategory as keyof (typeof maxScoresOuter)[keyof typeof maxScoresOuter]] ?? 15}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          ))}
                       </div>
                       <div className="space-y-4">
-                        {sortedContestants.filter(contestant => contestant.gender === 'FEMALE').map(contestant => (
-                          <div key={contestant.id} className="space-y-4">
-                            <div className="flex items-center justify-between">
-                              <h3 className="text-lg font-semibold">Contestant {contestant.contestantNumber}</h3>
-                              <Badge variant="outline" className="text-sm uppercase rounded-full bg-pink-500 text-white">FEMALE</Badge>
-                            </div>
-                            {category.subCategories.map(subCategory => (
-                              <div key={subCategory} className="flex items-center space-x-4 w-fit">
-                                <Label htmlFor={`${category.id}-${contestant.id}-${subCategory}`} className="w-40 text-right">{subCategory.replace(/_/g, ' ')}</Label>
-                                <ScoreInput
-                                  category={category}
-                                  contestant={contestant}
-                                  subCategory={subCategory}
-                                  value={scores[category.id]?.[contestant.id]?.[subCategory]}
-                                  onChange={handleScoreChange}
-                                />
-                                <span className="text-sm text-gray-500 ml-2">
-                                  Max: {maxScoresOuter[category.id as keyof typeof maxScoresOuter]?.[subCategory as keyof (typeof maxScoresOuter)[keyof typeof maxScoresOuter]] ?? 15}
-                                </span>
+                        {currentState !== 'finalRound' ? sortedContestants
+                          .filter(contestant =>
+                            contestant.gender === 'FEMALE')
+                          .map(contestant => (
+                            <div key={contestant.id} className="space-y-4">
+                              <div className="flex items-center justify-between">
+                                <h3 className="text-lg font-semibold">Contestant {contestant.contestantNumber}</h3>
+                                <Badge variant="outline" className="text-sm uppercase rounded-full bg-pink-500 text-white">FEMALE</Badge>
                               </div>
-                            ))}
-                          </div>
-                        ))}
+                              {category.subCategories.map(subCategory => (
+                                <div key={subCategory} className="flex items-center space-x-4 w-fit">
+                                  <Label htmlFor={`${category.id}-${contestant.id}-${subCategory}`} className="w-40 text-right">{subCategory.replace(/_/g, ' ')}</Label>
+                                  <ScoreInput
+                                    category={category}
+                                    contestant={contestant}
+                                    subCategory={subCategory}
+                                    value={scores[category.id]?.[contestant.id]?.[subCategory]}
+                                    onChange={handleScoreChange}
+                                  />
+                                  <span className="text-sm text-gray-500 ml-2">
+                                    Max: {maxScoresOuter[category.id as keyof typeof maxScoresOuter]?.[subCategory as keyof (typeof maxScoresOuter)[keyof typeof maxScoresOuter]] ?? 15}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )) : sortedContestants.filter(contestant => (contestant.gender === 'FEMALE' && topFemales.includes(contestant.id))).map(contestant => (
+                            <div key={contestant.id} className="space-y-4">
+                              <div className="flex items-center justify-between">
+                                <h3 className="text-lg font-semibold">Contestant {contestant.contestantNumber}</h3>
+                                <Badge variant="outline" className="text-sm uppercase rounded-full bg-pink-500 text-white">FEMALE</Badge>
+                              </div>
+                              {category.subCategories.map(subCategory => (
+                                <div key={subCategory} className="flex items-center space-x-4 w-fit">
+                                  <Label htmlFor={`${category.id}-${contestant.id}-${subCategory}`} className="w-40 text-right">{subCategory.replace(/_/g, ' ')}</Label>
+                                  <ScoreInput
+                                    category={category}
+                                    contestant={contestant}
+                                    subCategory={subCategory}
+                                    value={scores[category.id]?.[contestant.id]?.[subCategory]}
+                                    onChange={handleScoreChange}
+                                  />
+                                  <span className="text-sm text-gray-500 ml-2">
+                                    Max: {maxScoresOuter[category.id as keyof typeof maxScoresOuter]?.[subCategory as keyof (typeof maxScoresOuter)[keyof typeof maxScoresOuter]] ?? 15}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          ))}
                       </div>
                     </div>
                   </ScrollArea>
@@ -387,8 +441,8 @@ export function ScoringPageComponent({ contestants, judge }: { contestants: Cont
             </Card>
             <Button
               className={`mt-6 w-full ${hasChanges[category.id]
-                  ? 'bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600'
-                  : 'bg-gradient-to-r from-pink-400 to-purple-500 hover:from-pink-500 hover:to-purple-600'
+                ? 'bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600'
+                : 'bg-gradient-to-r from-pink-400 to-purple-500 hover:from-pink-500 hover:to-purple-600'
                 } text-white`}
               onClick={() => handleSubmit(category.id)}
             >

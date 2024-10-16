@@ -51,8 +51,8 @@ model SwimwearScores {
   contestantId String
   subCategory  SwimwearSubCategory
   score        Int
-  contestant   Contestant          @relation(fields: [contestantId], references: [id])
-  judge        Judge               @relation(fields: [judgeId], references: [id])
+  contestant   Contestant          @relation(fields: [contestantId], references: [id], onDelete: Cascade)
+  judge        Judge               @relation(fields: [judgeId], references: [id], onDelete: Cascade)
 }
 
 model FormalAttireScores {
@@ -61,8 +61,8 @@ model FormalAttireScores {
   contestantId String
   score        Int
   subCategory  FormalAttireSubCategory
-  contestant   Contestant              @relation(fields: [contestantId], references: [id])
-  judge        Judge                   @relation(fields: [judgeId], references: [id])
+  contestant   Contestant              @relation(fields: [contestantId], references: [id], onDelete: Cascade)
+  judge        Judge                   @relation(fields: [judgeId], references: [id], onDelete: Cascade)
 }
 
 model QuestionAndAnswerScores {
@@ -71,8 +71,8 @@ model QuestionAndAnswerScores {
   contestantId String
   score        Int
   subCategory  QuestionAndAnswerSubCategory
-  contestant   Contestant                   @relation(fields: [contestantId], references: [id])
-  judge        Judge                        @relation(fields: [judgeId], references: [id])
+  contestant   Contestant                   @relation(fields: [contestantId], references: [id], onDelete: Cascade)
+  judge        Judge                        @relation(fields: [judgeId], references: [id], onDelete: Cascade)
 }
 
 model FinalRoundScores {
@@ -81,8 +81,8 @@ model FinalRoundScores {
   contestantId String
   subCategory  FinalRoundSubCategory
   score        Int
-  contestant   Contestant                   @relation(fields: [contestantId], references: [id])
-  judge        Judge                        @relation(fields: [judgeId], references: [id])
+  contestant   Contestant                   @relation(fields: [contestantId], references: [id], onDelete: Cascade)
+  judge        Judge                        @relation(fields: [judgeId], references: [id], onDelete: Cascade)
 }
 
 model TabulationDesignVariables {
@@ -110,8 +110,8 @@ enum QuestionAndAnswerSubCategory {
 }
 
 enum FinalRoundSubCategory {
-  INTELLIGENCE
-  POISE_AND_PERSONALITY
+  INTELLIGENCE_AND_WIT
+  POISE_CONFIDENCE_AND_PERSONALITY
 }
 
 enum Gender {

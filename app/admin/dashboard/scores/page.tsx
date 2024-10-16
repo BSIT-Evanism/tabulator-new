@@ -1,5 +1,5 @@
 import prisma from "@/lib/db"
-import { SwimwearSubCategory, FormalAttireSubCategory, QuestionAndAnswerSubCategory } from "@prisma/client"
+import { SwimwearSubCategory, FormalAttireSubCategory, QuestionAndAnswerSubCategory, FinalRoundSubCategory } from "@prisma/client"
 import {
     Table,
     TableBody,
@@ -20,10 +20,11 @@ export default async function ScoresPage() {
     const contestants = await prisma.contestant.findMany()
     const judges = await prisma.judge.findMany()
 
-    const [swimwearScores, formalAttireScores, questionAndAnswerScores] = await Promise.all([
+    const [swimwearScores, formalAttireScores, questionAndAnswerScores, finalRoundScores] = await Promise.all([
         prisma.swimwearScores.findMany({ include: { contestant: true, judge: true } }),
         prisma.formalAttireScores.findMany({ include: { contestant: true, judge: true } }),
-        prisma.questionAndAnswerScores.findMany({ include: { contestant: true, judge: true } })
+        prisma.questionAndAnswerScores.findMany({ include: { contestant: true, judge: true } }),
+        prisma.finalRoundScores.findMany({ include: { contestant: true, judge: true } })
     ])
 
     const calculateAverage = (scores: number[]) =>
@@ -33,7 +34,8 @@ export default async function ScoresPage() {
         const contestantScores = {
             swimwear: swimwearScores.filter(s => s.contestantId === contestant.id),
             formalAttire: formalAttireScores.filter(s => s.contestantId === contestant.id),
-            questionAndAnswer: questionAndAnswerScores.filter(s => s.contestantId === contestant.id)
+            questionAndAnswer: questionAndAnswerScores.filter(s => s.contestantId === contestant.id),
+            finalRound: finalRoundScores.filter(s => s.contestantId === contestant.id)
         }
 
         const categories = [
@@ -72,13 +74,26 @@ export default async function ScoresPage() {
                     average: calculateAverage(contestantScores.questionAndAnswer.filter(s => s.subCategory === subCategory).map(s => s.score))
                 })),
                 average: calculateAverage(contestantScores.questionAndAnswer.map(s => s.score))
+            },
+            {
+                name: "Final Round",
+                subCategories: Object.values(FinalRoundSubCategory).map(subCategory => ({
+                    name: subCategory,
+                    judgeScores: judges.map(judge => ({
+                        judge,
+                        score: contestantScores.finalRound.find(s => s.subCategory === subCategory && s.judgeId === judge.id)?.score || 0
+                    })),
+                    average: calculateAverage(contestantScores.finalRound.filter(s => s.subCategory === subCategory).map(s => s.score))
+                })),
+                average: calculateAverage(contestantScores.finalRound.map(s => s.score))
             }
         ]
 
         const overallAverage = calculateAverage([
             ...contestantScores.swimwear,
             ...contestantScores.formalAttire,
-            ...contestantScores.questionAndAnswer
+            ...contestantScores.questionAndAnswer,
+            ...contestantScores.finalRound
         ].map(s => s.score))
 
         return { contestant, categories, overallAverage }
