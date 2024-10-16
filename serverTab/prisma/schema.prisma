@@ -49,8 +49,9 @@ model Judge {
 }
 
 model PageantState {
-  id    Int   @id @default(autoincrement())
-  state State
+  id          Int   @id @default(autoincrement())
+  state       State
+  maxFinalist Int   @default(3)
 }
 
 model SwimwearScores {

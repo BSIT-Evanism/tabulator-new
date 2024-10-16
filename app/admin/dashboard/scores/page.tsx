@@ -108,8 +108,22 @@ export default async function ScoresPage() {
     femaleContestants.sort((a, b) => b.overallAverage - a.overallAverage)
 
     return (
-        <div className="p-6 space-y-8">
+        <div className="p-6 space-y-8 flex flex-col items-center">
             <h1 className="text-3xl font-bold text-center text-purple-800 mb-8">Detailed Scores</h1>
+            <div className="flex justify-center gap-4 w-fit bg-slate-100 p-4 rounded-lg">
+                <Link href="/admin/dashboard/scores/swimwear">
+                    <Button variant="outline" className="w-40">Swimwear</Button>
+                </Link>
+                <Link href="/admin/dashboard/scores/formalAttire">
+                    <Button variant="outline" className="w-40">Formal Attire</Button>
+                </Link>
+                <Link href="/admin/dashboard/scores/questionAndAnswer">
+                    <Button variant="outline" className="w-40">Question and Answer</Button>
+                </Link>
+                <Link href="/admin/dashboard/scores/finalRound">
+                    <Button variant="outline" className="w-40">Final Round</Button>
+                </Link>
+            </div>
             <Link href="/admin/dashboard">
                 <Button variant="outline" className="absolute top-[10vh] left-4">Back to Dashboard</Button>
             </Link>

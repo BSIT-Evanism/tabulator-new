@@ -305,9 +305,15 @@ const app = new Elysia({ prefix: '/api' })
     const maleContestants = organizedScores.filter(score => score.contestant.gender === 'MALE')
     const femaleContestants = organizedScores.filter(score => score.contestant.gender === 'FEMALE')
 
+    const maxFinalist = await prisma.pageantState.findFirst({
+      where: {
+        id: 1
+      }
+    })
+
     // Sort each group separately
-    const topMales = maleContestants.sort((a, b) => b.overallAverage - a.overallAverage).slice(0, 3)
-    const topFemales = femaleContestants.sort((a, b) => b.overallAverage - a.overallAverage).slice(0, 3)
+    const topMales = maleContestants.sort((a, b) => b.overallAverage - a.overallAverage).slice(0, maxFinalist?.maxFinalist ?? 3)
+    const topFemales = femaleContestants.sort((a, b) => b.overallAverage - a.overallAverage).slice(0, maxFinalist?.maxFinalist ?? 3)
 
     return { topMales, topFemales }
   }, {

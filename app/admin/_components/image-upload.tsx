@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 
 export function ImageUpload({ eventName, color, iconName }: { eventName: string, color: string, iconName: string }) {
     const [file, setFile] = useState<File | null>(null)
+
     const [existingFile, setExistingFile] = useState<string | null>(null)
     const [name, setEventName] = useState<string>(eventName)
     const [eventColor, setEventColor] = useState<string>(color)

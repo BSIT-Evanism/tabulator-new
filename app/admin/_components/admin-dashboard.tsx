@@ -60,16 +60,31 @@ export async function AdminDashboardComponent() {
             <AddJudgeForm />
           </DashboardCard>
         </div>
-        <div className="rounded-xl bg-white p-6 shadow-lg">
-          <div className='flex items-center justify-between mb-4'>
-            <h2 className="text-xl font-semibold text-purple-800">Score Tally</h2>
+        <div className="rounded-xl bg-white p-6 shadow-lg hover:shadow-xl transition-shadow duration-300">
+          <div className='flex items-center justify-between mb-6'>
+            <h2 className="text-2xl font-bold text-purple-800 tracking-tight">Score Tally</h2>
             <Link href={'/admin/dashboard/scores'}>
-              <Button variant={'outline'}>
-                View Full Scores <ChevronRight className='w-4 h-4 ml-2' />
+              <Button variant={'outline'} className="group hover:bg-purple-100 transition-colors duration-300">
+                View Full Scores
+                <ChevronRight className='w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform duration-300' />
               </Button>
             </Link>
           </div>
-          <ScoreTable />
+          <div className='grid grid-cols-2 sm:grid-cols-4 gap-4'>
+            {[
+              { href: '/admin/dashboard/scores/swimwear', label: 'Swimwear', icon: '🏊‍♀️' },
+              { href: '/admin/dashboard/scores/formalAttire', label: 'Formal', icon: '👗' },
+              { href: '/admin/dashboard/scores/questionAndAnswer', label: 'Q&A', icon: '🎤' },
+              { href: '/admin/dashboard/scores/finalRound', label: 'Final Round', icon: '🏆' },
+            ].map(({ href, label, icon }) => (
+              <Link key={href} href={href}>
+                <Button variant={'outline'} className="w-full h-full py-4 flex flex-col items-center justify-center gap-2 hover:bg-purple-50 hover:border-purple-300 transition-colors duration-300">
+                  <span className="text-2xl">{icon}</span>
+                  <span>{label}</span>
+                </Button>
+              </Link>
+            ))}
+          </div>
         </div>
         <div className="rounded-xl bg-white p-6 shadow-lg">
           <h2 className="mb-4 text-xl font-semibold text-purple-800">Upload Images</h2>
@@ -146,53 +161,41 @@ function ScoreTable() {
 }
 
 async function QuickStats() {
-  const swimwearBest = await prisma.swimwearScores.groupBy({
-    by: ['contestantId'],
-    _avg: {
-      score: true,
-    },
-    orderBy: {
-      _avg: {
-        score: 'desc',
-      },
-    },
-    take: 1,
-  });
+  const [swimwearBest, formalBest, qaBest] = await Promise.all([
+    prisma.swimwearScores.groupBy({
+      by: ['contestantId'],
+      _avg: { score: true },
+      orderBy: { _avg: { score: 'desc' } },
+    }),
+    prisma.formalAttireScores.groupBy({
+      by: ['contestantId'],
+      _avg: { score: true },
+      orderBy: { _avg: { score: 'desc' } },
+    }),
+    prisma.questionAndAnswerScores.groupBy({
+      by: ['contestantId'],
+      _avg: { score: true },
+      orderBy: { _avg: { score: 'desc' } },
+    })
+  ]);
 
-  const formalBest = await prisma.formalAttireScores.groupBy({
-    by: ['contestantId'],
-    _avg: {
-      score: true,
-    },
-    orderBy: {
-      _avg: {
-        score: 'desc',
-      },
-    },
-    take: 1,
-  });
-
-  const qaBest = await prisma.questionAndAnswerScores.groupBy({
-    by: ['contestantId'],
-    _avg: {
-      score: true,
-    },
-    orderBy: {
-      _avg: {
-        score: 'desc',
-      },
-    },
-    take: 1,
-  });
-
-  const [bestSwimwearContestant, bestFormalContestant, bestQAContestant] = await Promise.all([
-    prisma.contestant.findFirst({ where: { id: swimwearBest[0]?.contestantId }, select: { name: true } }),
-    prisma.contestant.findFirst({ where: { id: formalBest[0]?.contestantId }, select: { name: true } }),
-    prisma.contestant.findFirst({ where: { id: qaBest[0]?.contestantId }, select: { name: true } }),
+  const [bestSwimwearContestants, bestFormalContestants, bestQAContestants] = await Promise.all([
+    prisma.contestant.findMany({
+      where: { id: { in: swimwearBest.map(s => s.contestantId) } },
+      select: { id: true, name: true, gender: true }
+    }),
+    prisma.contestant.findMany({
+      where: { id: { in: formalBest.map(f => f.contestantId) } },
+      select: { id: true, name: true, gender: true }
+    }),
+    prisma.contestant.findMany({
+      where: { id: { in: qaBest.map(q => q.contestantId) } },
+      select: { id: true, name: true, gender: true }
+    }),
   ]);
 
   const topCandidateResult = await prisma.$queryRaw`
-    SELECT c.id, c.name,
+    SELECT c.id, c.name, c.gender,
       (COALESCE(s.avg_score, 0) + COALESCE(f.avg_score, 0) + COALESCE(q.avg_score, 0)) as total_score
     FROM "Contestant" c
     LEFT JOIN (
@@ -211,20 +214,43 @@ async function QuickStats() {
       GROUP BY "contestantId"
     ) q ON c.id = q."contestantId"
     ORDER BY total_score DESC
-    LIMIT 1
+    LIMIT 2
   `;
 
-  //@ts-expect-error - topCandidateResult is typed as any
-  const topCandidate = topCandidateResult[0];
+  const getBestByGender = (contestants: Array<{ gender: string, name: string }>, gender: string): string =>
+    contestants.find(c => c.gender === gender)?.name ?? 'N/A';
 
   return (
     <div className="rounded-xl bg-white p-6 shadow-lg h-full">
-      <h2 className="mb-4 text-xl font-semibold text-purple-800">Quick Stats</h2>
-      <div className="space-y-4">
-        <StatItem label="Best in Swimwear" value={bestSwimwearContestant?.name ?? 'N/A'} />
-        <StatItem label="Best in Formal" value={bestFormalContestant?.name ?? 'N/A'} />
-        <StatItem label="Best in Q&A" value={bestQAContestant?.name ?? 'N/A'} />
-        <StatItem label="Top Candidate" value={topCandidate?.name ?? 'N/A'} />
+      <h2 className="mb-6 text-2xl font-bold text-purple-800">Quick Stats</h2>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <StatCategory title="Swimwear">
+          <StatItem label="Best Male" value={getBestByGender(bestSwimwearContestants, 'MALE')} />
+          <StatItem label="Best Female" value={getBestByGender(bestSwimwearContestants, 'FEMALE')} />
+        </StatCategory>
+        <StatCategory title="Formal Attire">
+          <StatItem label="Best Male" value={getBestByGender(bestFormalContestants, 'MALE')} />
+          <StatItem label="Best Female" value={getBestByGender(bestFormalContestants, 'FEMALE')} />
+        </StatCategory>
+        <StatCategory title="Q&A">
+          <StatItem label="Best Male" value={getBestByGender(bestQAContestants, 'MALE')} />
+          <StatItem label="Best Female" value={getBestByGender(bestQAContestants, 'FEMALE')} />
+        </StatCategory>
+        <StatCategory title="Overall">
+          <StatItem label="Top Male" value={getBestByGender(topCandidateResult, 'MALE')} />
+          <StatItem label="Top Female" value={getBestByGender(topCandidateResult, 'FEMALE')} />
+        </StatCategory>
+      </div>
+    </div>
+  )
+}
+
+function StatCategory({ title, children }: { title: string, children: React.ReactNode }) {
+  return (
+    <div className="bg-purple-50 p-4 rounded-lg col-span-2">
+      <h3 className="text-lg font-semibold text-purple-700 mb-3">{title}</h3>
+      <div className="space-y-2">
+        {children}
       </div>
     </div>
   )
@@ -232,9 +258,9 @@ async function QuickStats() {
 
 function StatItem({ label, value }: { label: string, value: string }) {
   return (
-    <div className="flex items-center justify-between">
-      <span className="text-sm text-gray-600">{label}</span>
-      <span className="font-medium text-purple-600">{value}</span>
+    <div className="flex items-center justify-between bg-white p-2 rounded-md">
+      <span className="text-sm font-medium text-gray-600">{label}</span>
+      <span className="font-bold text-purple-600">{value}</span>
     </div>
   )
 }

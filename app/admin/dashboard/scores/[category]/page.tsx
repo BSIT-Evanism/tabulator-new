@@ -58,10 +58,12 @@ export default async function CategoryScoresPage({ params }: { params: { categor
         return { contestant, judgeScores, totalScore, averageScore }
     })
 
-    const maleContestants = organizedScores.filter(score => score.contestant.gender === 'MALE' && topMaleArray.includes(score.contestant.id))
-        .sort((a, b) => a.contestant.contestantNumber - b.contestant.contestantNumber)
-    const femaleContestants = organizedScores.filter(score => score.contestant.gender === 'FEMALE' && topFemaleArray.includes(score.contestant.id))
-        .sort((a, b) => a.contestant.contestantNumber - b.contestant.contestantNumber)
+    const maleContestants = category === 'FINALROUND' ? organizedScores.filter(score => score.contestant.gender === 'MALE' && topMaleArray.includes(score.contestant.id))
+        .sort((a, b) => a.contestant.contestantNumber - b.contestant.contestantNumber) : organizedScores.filter(score => score.contestant.gender === 'MALE')
+            .sort((a, b) => a.contestant.contestantNumber - b.contestant.contestantNumber)
+    const femaleContestants = category === 'FINALROUND' ? organizedScores.filter(score => score.contestant.gender === 'FEMALE' && topFemaleArray.includes(score.contestant.id))
+        .sort((a, b) => a.contestant.contestantNumber - b.contestant.contestantNumber) : organizedScores.filter(score => score.contestant.gender === 'FEMALE')
+            .sort((a, b) => a.contestant.contestantNumber - b.contestant.contestantNumber)
 
     const addRankings = (contestants) => {
         return contestants.map((contestant, index, array) => ({
