@@ -10,6 +10,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
+import { client } from "@/lib/treaty"
 
 const formatText = (text: string) => {
     return text.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ')
@@ -21,7 +22,6 @@ export default async function CategoryScoresPage({ params }: { params: { categor
     const judges = await prisma.judge.findMany()
 
     let scores
-
     switch (category) {
         case 'SWIMWEAR':
             scores = await prisma.swimwearScores.findMany({ include: { contestant: true, judge: true } })
@@ -32,9 +32,17 @@ export default async function CategoryScoresPage({ params }: { params: { categor
         case 'QUESTIONANDANSWER':
             scores = await prisma.questionAndAnswerScores.findMany({ include: { contestant: true, judge: true } })
             break
+        case 'FINALROUND':
+            scores = await prisma.finalRoundScores.findMany({ include: { contestant: true, judge: true } })
+            break
         default:
             throw new Error(`Invalid category: ${category}`)
     }
+
+    const topcontestants = await client.api.topcontestants.get()
+
+    const topMaleArray = topcontestants.data?.topMales.map(male => male.contestant.id) ?? []
+    const topFemaleArray = topcontestants.data?.topFemales.map(female => female.contestant.id) ?? []
 
     const organizedScores = contestants.map(contestant => {
         const contestantScores = scores.filter(s => s.contestantId === contestant.id)
@@ -50,9 +58,9 @@ export default async function CategoryScoresPage({ params }: { params: { categor
         return { contestant, judgeScores, totalScore, averageScore }
     })
 
-    const maleContestants = organizedScores.filter(score => score.contestant.gender === 'MALE')
+    const maleContestants = organizedScores.filter(score => score.contestant.gender === 'MALE' && topMaleArray.includes(score.contestant.id))
         .sort((a, b) => a.contestant.contestantNumber - b.contestant.contestantNumber)
-    const femaleContestants = organizedScores.filter(score => score.contestant.gender === 'FEMALE')
+    const femaleContestants = organizedScores.filter(score => score.contestant.gender === 'FEMALE' && topFemaleArray.includes(score.contestant.id))
         .sort((a, b) => a.contestant.contestantNumber - b.contestant.contestantNumber)
 
     const addRankings = (contestants) => {
