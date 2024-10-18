@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { TreePalm, Shirt, MessageSquare, LogOutIcon, Trophy, Heart, ThumbsDown } from 'lucide-react'
+import { TreePalm, Shirt, MessageSquare, LogOutIcon, Trophy, Heart, ThumbsDown, Lock } from 'lucide-react'
 import { Contestant, Judge } from '@prisma/client'
 import { useStateStore } from '@/lib/state-ws'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -17,6 +17,7 @@ import { useAction } from 'next-safe-action/hooks'
 import { client } from '@/lib/treaty'
 import { Badge } from '@/components/ui/badge'
 import { CustomToast } from '@/components/custom-toast'
+import { cn } from '@/lib/utils'
 
 const categories = [
   {
@@ -166,7 +167,7 @@ const ScoreInput = ({ category, contestant, subCategory, value, onChange }: { ca
 export function ScoringPageComponent({ contestants, judge, topMales, topFemales }: { contestants: Contestant[], judge: Judge | null, topMales: string[], topFemales: string[] }) {
   const [scores, setScores] = useState<Record<string, Record<string, Record<string, number>>>>({})
   const [initialScores, setInitialScores] = useState<Record<string, Record<string, Record<string, number>>>>({})
-  const { currentState, connect, disconnect } = useStateStore()
+  const { currentState, connect, disconnect, isLocked } = useStateStore()
   const [hasChanges, setHasChanges] = useState<Record<string, boolean>>({})
 
   // const { execute: executeGetScores } = useAction(getScores)
@@ -294,7 +295,7 @@ export function ScoringPageComponent({ contestants, judge, topMales, topFemales 
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-100 to-purple-100 p-8">
+    <div className={cn("min-h-screen bg-gradient-to-br from-pink-100 to-purple-100 p-8", isLocked ? 'cursor-not-allowed' : '')}>
       <Button variant="link" className='absolute top-4 right-4' onClick={judgeLogout}><LogOutIcon className="w-4 h-4 mr-2" />Logout</Button>
       <h1 className="text-3xl font-bold text-center text-purple-800 mb-8">MMBU 2024 Scoring</h1>
 
@@ -303,6 +304,35 @@ export function ScoringPageComponent({ contestants, judge, topMales, topFemales 
         <span className="font-semibold">Current Stage: </span>
         <span className="text-purple-600">{currentState || 'Not set'}</span>
       </div>
+      <AnimatePresence>
+        {isLocked && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="min-h-screen backdrop-blur-sm bg-pink-100/70 fixed z-20 top-0 left-0 w-full h-full flex flex-col items-center justify-center p-4">
+            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} className="w-full max-w-2xl bg-white rounded-2xl shadow-lg p-8">
+              <div className="flex flex-col items-center mb-6">
+                <Lock className="w-20 h-20 text-gray-600 mb-4" />
+                <h1 className="text-3xl font-bold text-purple-700 mb-2">MMBU 2024 Scoring</h1>
+                <p className="text-gray-600 text-center">
+                  The scoring is currently hidden and locked. Please wait for tabulators to unlock the scoring.
+                </p>
+              </div>
+
+              <div className="bg-gray-100 rounded-lg p-6 mb-6">
+                <h2 className="text-xl font-semibold text-purple-700 mb-2">Notice</h2>
+                <p className="text-gray-600">
+                  This is to prevent judges from changing scores after the event has ended and making the results hidden.
+                </p>
+              </div>
+
+              <div className="flex justify-center">
+                <button className="bg-purple-600 text-white px-6 py-2 rounded-full font-semibold hover:bg-purple-700 transition-colors duration-300" disabled>
+                  Locked
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+
+        )}
+      </AnimatePresence>
 
       <Tabs defaultValue={categories[0].id} value={currentState ?? categories[0].id} className="w-full max-w-7xl mx-auto">
         <TabsList className="grid w-full grid-cols-4">
@@ -437,6 +467,9 @@ export function ScoringPageComponent({ contestants, judge, topMales, topFemales 
                     </div>
                   </ScrollArea>
                 </motion.div>
+                <p className='text-xs text-gray-500 text-center'>
+                  Scroll to see more contestants
+                </p>
               </CardContent>
             </Card>
             <Button

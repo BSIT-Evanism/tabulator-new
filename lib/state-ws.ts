@@ -11,9 +11,10 @@ enum State {
 export type StateStore = {
     currentState: State | null;
     status: "CONNECTED" | "DISCONNECTED";
-
+    isLocked: boolean;
     // actions
     setState: (state: State) => void;
+    setLock: (isLocked: boolean) => void;
     connect: () => void;
     disconnect: () => void;
     isConnected: () => boolean;
@@ -28,9 +29,13 @@ export const useStateStore = create<StateStore>((set, get) => {
         currentState: null,
         status: "DISCONNECTED",
         judges: [],
+        isLocked: false,
 
         setState: (state) => {
             ws?.send({ type: "setState", state });
+        },
+        setLock: (isLocked) => {
+            ws?.send({ type: "setLock", isLocked });
         },
 
 
@@ -46,6 +51,11 @@ export const useStateStore = create<StateStore>((set, get) => {
                 } else {
                     console.error('Received unexpected data:', data);
                 }
+                if (typeof data === 'object' && data.type === "lockUpdate") {
+                    set({ isLocked: data.isLocked });
+                } else {
+                    console.error('Received unexpected data:', data);
+                }
             });
 
 
@@ -55,7 +65,7 @@ export const useStateStore = create<StateStore>((set, get) => {
         disconnect: () => {
             ws?.close();
             ws = null;
-            set({ status: "DISCONNECTED", currentState: null });
+            set({ status: "DISCONNECTED", currentState: null, isLocked: false });
         },
 
         isConnected: () => get().status === "CONNECTED",

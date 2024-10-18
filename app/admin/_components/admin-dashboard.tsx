@@ -88,7 +88,7 @@ export async function AdminDashboardComponent() {
         </div>
         <div className="rounded-xl bg-white p-6 shadow-lg">
           <h2 className="mb-4 text-xl font-semibold text-purple-800">Upload Images</h2>
-          <ImageUpload eventName={dataVars?.eventName ?? "Model Pageant 2024"} color={dataVars?.color ?? "#FFC8DD"} iconName={dataVars?.iconName ?? "icon.png"} />
+          <ImageUpload eventName={dataVars?.eventName ?? "Model Pageant 2024"} color={dataVars?.color ?? "#FFC8DD"} icon={dataVars?.iconName ?? "icon.png"} />
         </div>
       </div>
       <div className="space-y-6 row-span-full">

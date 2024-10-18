@@ -91,10 +91,12 @@ const app = new Elysia({ prefix: '/api' })
     body: t.Object({
       type: t.String(),
       state: t.Optional(t.String()),
+      isLocked: t.Optional(t.Boolean())
     }),
     response: t.Object({
       type: t.String(),
       state: t.Optional(t.String()),
+      isLocked: t.Optional(t.Boolean())
     }),
     open: async (ws) => {
       // You can add authentication check here if needed
@@ -106,11 +108,13 @@ const app = new Elysia({ prefix: '/api' })
       ws.subscribe("stateChannel");
       ws.publish("stateChannel", {
         type: "stateUpdate",
-        state: state?.state
+        state: state?.state,
+        isLocked: state?.isLocked
       });
       ws.send({
         type: "stateUpdate",
-        state: state?.state
+        state: state?.state,
+        isLocked: state?.isLocked
       })
     },
     message: async (ws, payload): Promise<void> => {
@@ -128,10 +132,12 @@ const app = new Elysia({ prefix: '/api' })
           ws.publish("stateChannel", {
             type: "stateUpdate",
             state: payload.state,
+            isLocked: state?.isLocked
           });
           ws.send({
             type: "stateUpdate",
             state: payload.state,
+            isLocked: state?.isLocked
           })
         } catch (_) {
           const state = await prisma.pageantState.findUnique({
@@ -141,7 +147,38 @@ const app = new Elysia({ prefix: '/api' })
           })
           ws.publish("stateChannel", {
             type: "stateUpdate",
-            state: state?.state
+            state: state?.state,
+            isLocked: state?.isLocked
+          });
+        }
+      }
+      if (payload.type === 'setLock') {
+        try {
+          const state = await prisma.pageantState.update({
+            where: {
+              id: 1
+            },
+            data: {
+              isLocked: payload.isLocked
+            }
+          })
+          ws.publish("stateChannel", {
+            type: "lockUpdate",
+            isLocked: state?.isLocked
+          });
+          ws.send({
+            type: "lockUpdate",
+            isLocked: state?.isLocked
+          })
+        } catch (_) {
+          const state = await prisma.pageantState.findUnique({
+            where: {
+              id: 1
+            }
+          })
+          ws.publish("stateChannel", {
+            type: "lockUpdate",
+            isLocked: state?.isLocked
           });
         }
       }

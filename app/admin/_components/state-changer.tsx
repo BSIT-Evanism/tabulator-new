@@ -1,11 +1,13 @@
 'use client'
 import { useStateStore } from "@/lib/state-ws";
-import { PalmtreeIcon, BookUser, MessageCircle, Trophy } from "lucide-react";
+import { PalmtreeIcon, BookUser, MessageCircle, Trophy, Unlock, Lock } from "lucide-react";
 import { useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import React from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { motion } from "framer-motion";
+import { cn } from "@/lib/utils";
 
 enum State {
     swimwear = "swimwear",
@@ -14,8 +16,29 @@ enum State {
     finalRound = "finalRound"
 }
 
+const AnimatedSwitch = ({ isOn, toggleSwitch }) => (
+    <div className="flex items-center w-full p-4 bg-slate-200 rounded-lg">
+        <motion.div
+            className="w-14 h-8 bg-gray-300 rounded-full p-1 cursor-pointer relative"
+            onClick={toggleSwitch}
+        >
+            <motion.div
+                className="w-6 h-6 flex items-center justify-center bg-white rounded-full shadow-md"
+                animate={{
+                    x: isOn ? 24 : 0,
+                }}
+                transition={{ type: "spring", stiffness: 700, damping: 30 }}
+            />
+            <Unlock className={cn("w-4 h-4 text-gray-600 translate-x-1 -translate-y-5", isOn ? "opacity-0" : "opacity-100")} />
+        </motion.div>
+        <span className="ml-2 text-sm font-medium text-gray-900">
+            Judge Lock: {isOn ? "Locked" : "Unlocked"}
+        </span>
+    </div>
+);
+
 export default function StateChanger() {
-    const { currentState, setState, connect, disconnect } = useStateStore()
+    const { currentState, setState, connect, disconnect, setLock, isLocked } = useStateStore()
 
     useEffect(() => {
         connect()
@@ -64,6 +87,9 @@ export default function StateChanger() {
                         ))}
                     </SelectContent>
                 </Select>
+                <div className="flex items-center justify-between">
+                    <AnimatedSwitch isOn={isLocked} toggleSwitch={() => setLock(!isLocked)} />
+                </div>
             </CardContent>
         </Card>
     )
