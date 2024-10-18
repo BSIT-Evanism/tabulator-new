@@ -11,6 +11,7 @@ export function JudgeStatusComponent({ initialJudges }: { initialJudges: { id: s
     useEffect(() => {
         const fetchJudges = async () => {
             const fetchedJudges = await client.api["logged-in-judges"].get()
+            console.log("fetchedJudges", fetchedJudges)
             setJudges(fetchedJudges?.data ?? [])
             setProgress(0)
         }

@@ -101,9 +101,6 @@ export function JudgesScreen({ data }: { data: TabulationDesignVariables | null 
                             <motion.h1 layoutId="greeting" className="text-white text-7xl font-black tracking-tighter mb-6 animate-pulse bg-clip-text text-transparent bg-gradient-to-r from-pink-500 via-gold-300 to-blue-500">
                                 Prepare for Elegance!
                             </motion.h1>
-                            <p className="text-yellow-300 text-4xl font-bold bg-purple-800/30 px-6 py-3 rounded-full shadow-lg">
-                                Event Launches at <span className="text-pink-300">{eventTime.toLocaleTimeString()}</span>
-                            </p>
                             <motion.div layoutId="timer" className="flex items-center space-x-6 bg-white/10 rounded-2xl p-6 backdrop-blur-sm">
                                 <span className="text-white text-3xl font-medium">Current Time:</span>
                                 <span className="text-green-300 text-5xl font-extrabold animate-bounce-slow">{currentTime.toLocaleTimeString()}</span>

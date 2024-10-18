@@ -18,6 +18,7 @@ import { client } from '@/lib/treaty'
 import { Badge } from '@/components/ui/badge'
 import { CustomToast } from '@/components/custom-toast'
 import { cn } from '@/lib/utils'
+import { useRouter } from 'next/navigation'
 
 const categories = [
   {
@@ -175,6 +176,7 @@ export function ScoringPageComponent({ contestants, judge, topMales, topFemales 
   const { execute: executeSubmitFormalAttire } = useAction(submitFormalAttireScore)
   const { execute: executeSubmitQuestionAndAnswer } = useAction(submitQuestionAndAnswerScore)
   const { execute: executeFinalRoundScores } = useAction(submitFinalRoundScores)
+  const router = useRouter()
 
   useEffect(() => {
     connect()
@@ -188,6 +190,10 @@ export function ScoringPageComponent({ contestants, judge, topMales, topFemales 
       fetchScores(judge.id, currentState)
     }
   }, [judge, currentState])
+
+  useEffect(() => {
+    router.refresh()
+  }, [isLocked, router])
 
   const fetchScores = async (judgeId: string, category: string) => {
     try {

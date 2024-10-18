@@ -11,6 +11,7 @@ import StateChanger from './state-changer'
 import { JudgeStatusComponent } from './judge-status-component'
 import { Suspense } from 'react'
 import { ImageUpload } from './image-upload'
+import { FormalAttireSubCategory, QuestionAndAnswerSubCategory, SwimwearSubCategory } from '@prisma/client'
 
 export async function AdminDashboardComponent() {
   const judgesCount = await prisma.judge.count()
@@ -164,84 +165,119 @@ function ScoreTable() {
 }
 
 async function QuickStats() {
-  const [swimwearBest, formalBest, qaBest] = await Promise.all([
-    prisma.swimwearScores.groupBy({
-      by: ['contestantId'],
-      _avg: { score: true },
-      orderBy: { _avg: { score: 'desc' } },
-    }),
-    prisma.formalAttireScores.groupBy({
-      by: ['contestantId'],
-      _avg: { score: true },
-      orderBy: { _avg: { score: 'desc' } },
-    }),
-    prisma.questionAndAnswerScores.groupBy({
-      by: ['contestantId'],
-      _avg: { score: true },
-      orderBy: { _avg: { score: 'desc' } },
-    })
-  ]);
+  const contestants = await prisma.contestant.findMany()
+  const judges = await prisma.judge.findMany()
 
-  const [bestSwimwearContestants, bestFormalContestants, bestQAContestants] = await Promise.all([
-    prisma.contestant.findMany({
-      where: { id: { in: swimwearBest.map(s => s.contestantId) } },
-      select: { id: true, name: true, gender: true }
-    }),
-    prisma.contestant.findMany({
-      where: { id: { in: formalBest.map(f => f.contestantId) } },
-      select: { id: true, name: true, gender: true }
-    }),
-    prisma.contestant.findMany({
-      where: { id: { in: qaBest.map(q => q.contestantId) } },
-      select: { id: true, name: true, gender: true }
-    }),
-  ]);
+  const [swimwearScores, formalAttireScores, questionAndAnswerScores] = await Promise.all([
+    prisma.swimwearScores.findMany({ include: { contestant: true, judge: true } }),
+    prisma.formalAttireScores.findMany({ include: { contestant: true, judge: true } }),
+    prisma.questionAndAnswerScores.findMany({ include: { contestant: true, judge: true } }),
+  ])
 
-  const topCandidateResult = await prisma.$queryRaw`
-    SELECT c.id, c.name, c.gender,
-      (COALESCE(s.avg_score, 0) + COALESCE(f.avg_score, 0) + COALESCE(q.avg_score, 0)) as total_score
-    FROM "Contestant" c
-    LEFT JOIN (
-      SELECT "contestantId", AVG(score) as avg_score
-      FROM "SwimwearScores"
-      GROUP BY "contestantId"
-    ) s ON c.id = s."contestantId"
-    LEFT JOIN (
-      SELECT "contestantId", AVG(score) as avg_score
-      FROM "FormalAttireScores"
-      GROUP BY "contestantId"
-    ) f ON c.id = f."contestantId"
-    LEFT JOIN (
-      SELECT "contestantId", AVG(score) as avg_score
-      FROM "QuestionAndAnswerScores"
-      GROUP BY "contestantId"
-    ) q ON c.id = q."contestantId"
-    ORDER BY total_score DESC
-    LIMIT 2
-  `;
+  const calculateAverage = (scores: number[]) =>
+    scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : 0
 
-  const getBestByGender = (contestants: Array<{ gender: string, name: string }>, gender: string): string =>
-    contestants.find(c => c.gender === gender)?.name ?? 'N/A';
+  const organizedScores = contestants.map(contestant => {
+    const contestantScores = {
+      swimwear: swimwearScores.filter(s => s.contestantId === contestant.id),
+      formalAttire: formalAttireScores.filter(s => s.contestantId === contestant.id),
+      questionAndAnswer: questionAndAnswerScores.filter(s => s.contestantId === contestant.id),
+    }
+
+    const categories = [
+      {
+        name: "Swimwear",
+        subCategories: Object.values(SwimwearSubCategory).map(subCategory => ({
+          name: subCategory,
+          judgeScores: judges.map(judge => ({
+            judge,
+            score: contestantScores.swimwear.find(s => s.subCategory === subCategory && s.judgeId === judge.id)?.score || 0
+          })),
+          average: calculateAverage(contestantScores.swimwear.filter(s => s.subCategory === subCategory).map(s => s.score))
+        })),
+        average: calculateAverage(contestantScores.swimwear.map(s => s.score))
+      },
+      {
+        name: "Formal Attire",
+        subCategories: Object.values(FormalAttireSubCategory).map(subCategory => ({
+          name: subCategory,
+          judgeScores: judges.map(judge => ({
+            judge,
+            score: contestantScores.formalAttire.find(s => s.subCategory === subCategory && s.judgeId === judge.id)?.score || 0
+          })),
+          average: calculateAverage(contestantScores.formalAttire.filter(s => s.subCategory === subCategory).map(s => s.score))
+        })),
+        average: calculateAverage(contestantScores.formalAttire.map(s => s.score))
+      },
+      {
+        name: "Question and Answer",
+        subCategories: Object.values(QuestionAndAnswerSubCategory).map(subCategory => ({
+          name: subCategory,
+          judgeScores: judges.map(judge => ({
+            judge,
+            score: contestantScores.questionAndAnswer.find(s => s.subCategory === subCategory && s.judgeId === judge.id)?.score || 0
+          })),
+          average: calculateAverage(contestantScores.questionAndAnswer.filter(s => s.subCategory === subCategory).map(s => s.score))
+        })),
+        average: calculateAverage(contestantScores.questionAndAnswer.map(s => s.score))
+      },
+    ]
+
+    const overallAverage = calculateAverage([
+      ...contestantScores.swimwear,
+      ...contestantScores.formalAttire,
+      ...contestantScores.questionAndAnswer,
+    ].map(s => s.score))
+
+    return { contestant, categories, overallAverage }
+  })
+
+  // Separate contestants by gender
+  const maleContestants = organizedScores.filter(score => score.contestant.gender === 'MALE')
+  const femaleContestants = organizedScores.filter(score => score.contestant.gender === 'FEMALE')
+
+  // Sort each group separately
+  maleContestants.sort((a, b) => b.overallAverage - a.overallAverage)
+  femaleContestants.sort((a, b) => b.overallAverage - a.overallAverage)
+
+  // Calculate best performers for each category
+  const getBestByCategory = (contestants: typeof organizedScores, categoryName: string) => {
+    return contestants.reduce((best, current) => {
+      const categoryAverage = current.categories.find(c => c.name === categoryName)?.average || 0
+      return categoryAverage > (best?.average || 0) ? { name: current.contestant.name, average: categoryAverage } : best
+    }, { name: 'N/A', average: 0 })
+  }
+
+  const bestSwimwearMale = getBestByCategory(maleContestants, 'Swimwear')
+  const bestSwimwearFemale = getBestByCategory(femaleContestants, 'Swimwear')
+  const bestFormalMale = getBestByCategory(maleContestants, 'Formal Attire')
+  const bestFormalFemale = getBestByCategory(femaleContestants, 'Formal Attire')
+  const bestQAMale = getBestByCategory(maleContestants, 'Question and Answer')
+  const bestQAFemale = getBestByCategory(femaleContestants, 'Question and Answer')
+
+  // Get top overall performers
+  const topMale = maleContestants[0]?.contestant.name || 'N/A'
+  const topFemale = femaleContestants[0]?.contestant.name || 'N/A'
 
   return (
     <div className="rounded-xl bg-white p-6 shadow-lg h-full">
       <h2 className="mb-6 text-2xl font-bold text-purple-800">Quick Stats</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <StatCategory title="Swimwear">
-          <StatItem label="Best Male" value={getBestByGender(bestSwimwearContestants, 'MALE')} />
-          <StatItem label="Best Female" value={getBestByGender(bestSwimwearContestants, 'FEMALE')} />
+          <StatItem label="Best Male" value={bestSwimwearMale.name} />
+          <StatItem label="Best Female" value={bestSwimwearFemale.name} />
         </StatCategory>
         <StatCategory title="Formal Attire">
-          <StatItem label="Best Male" value={getBestByGender(bestFormalContestants, 'MALE')} />
-          <StatItem label="Best Female" value={getBestByGender(bestFormalContestants, 'FEMALE')} />
+          <StatItem label="Best Male" value={bestFormalMale.name} />
+          <StatItem label="Best Female" value={bestFormalFemale.name} />
         </StatCategory>
         <StatCategory title="Q&A">
-          <StatItem label="Best Male" value={getBestByGender(bestQAContestants, 'MALE')} />
-          <StatItem label="Best Female" value={getBestByGender(bestQAContestants, 'FEMALE')} />
+          <StatItem label="Best Male" value={bestQAMale.name} />
+          <StatItem label="Best Female" value={bestQAFemale.name} />
         </StatCategory>
-        <StatCategory title="Overall">
-          <StatItem label="Top Male" value={getBestByGender(topCandidateResult, 'MALE')} />
-          <StatItem label="Top Female" value={getBestByGender(topCandidateResult, 'FEMALE')} />
+        <StatCategory title="Overall - Initial Round">
+          <StatItem label="Top Male" value={topMale} />
+          <StatItem label="Top Female" value={topFemale} />
         </StatCategory>
       </div>
     </div>

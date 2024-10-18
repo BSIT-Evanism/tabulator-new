@@ -4,6 +4,7 @@ import { ScoringPageComponent } from "../_components/scoring-page";
 import prisma from "@/lib/db";
 import { client } from "@/lib/treaty";
 
+export const dynamic = 'force-dynamic'
 
 export default async function ScoringPage() {
 
@@ -24,11 +25,10 @@ export default async function ScoringPage() {
     })
 
     const contestants = await prisma.contestant.findMany()
-    const topcontestants = await client.api.topcontestants.get()
+    const topcontestant = await fetch(`${process.env.BACKEND_URL!}/api/topcontestants`)
+    const topcontestants = await topcontestant.json()
 
+    console.log("scoringtopcontestants", topcontestants.data?.topMales)
 
-    console.log(contestants)
-
-
-    return <ScoringPageComponent contestants={contestants} judge={judge} topFemales={topcontestants.data?.topFemales.map(female => female.contestant.id) ?? []} topMales={topcontestants.data?.topMales.map(male => male.contestant.id) ?? []} />
+    return <ScoringPageComponent contestants={contestants} judge={judge} topFemales={topcontestants.topFemales.map((female: any) => female.contestant.id) ?? []} topMales={topcontestants.topMales.map((male: any) => male.contestant.id) ?? []} />
 }

@@ -224,6 +224,11 @@ const app = new Elysia({ prefix: '/api' })
           where: { judgeId: judgeId as string }
         });
         break;
+      case 'finalRound':
+        scores = await prisma.finalRoundScores.findMany({
+          where: { judgeId: judgeId as string }
+        });
+        break;
       default:
         throw new Error('Invalid category');
     }
@@ -236,7 +241,7 @@ const app = new Elysia({ prefix: '/api' })
     };
   }, {
     params: t.Object({
-      category: t.Enum({ swimwear: 'swimwear', formalAttire: 'formalAttire', questionAndAnswer: 'questionAndAnswer' })
+      category: t.Enum({ swimwear: 'swimwear', formalAttire: 'formalAttire', questionAndAnswer: 'questionAndAnswer', finalRound: 'finalRound' })
     }),
     query: t.Object({
       judgeId: t.String()
@@ -250,7 +255,8 @@ const app = new Elysia({ prefix: '/api' })
         subCategory: t.Union([
           t.Enum(SwimwearSubCategory),
           t.Enum(FormalAttireSubCategory),
-          t.Enum(QuestionAndAnswerSubCategory)
+          t.Enum(QuestionAndAnswerSubCategory),
+          t.Enum(FinalRoundSubCategory)
         ])
       }))
     })
@@ -259,11 +265,10 @@ const app = new Elysia({ prefix: '/api' })
     const contestants = await prisma.contestant.findMany()
     const judges = await prisma.judge.findMany()
 
-    const [swimwearScores, formalAttireScores, questionAndAnswerScores, finalRoundScores] = await Promise.all([
+    const [swimwearScores, formalAttireScores, questionAndAnswerScores] = await Promise.all([
       prisma.swimwearScores.findMany({ include: { Contestant: true, Judge: true } }),
       prisma.formalAttireScores.findMany({ include: { Contestant: true, Judge: true } }),
       prisma.questionAndAnswerScores.findMany({ include: { Contestant: true, Judge: true } }),
-      prisma.finalRoundScores.findMany({ include: { Contestant: true, Judge: true } })
     ])
 
     const calculateAverage = (scores: number[]) =>
@@ -274,7 +279,6 @@ const app = new Elysia({ prefix: '/api' })
         swimwear: swimwearScores.filter(s => s.contestantId === contestant.id),
         formalAttire: formalAttireScores.filter(s => s.contestantId === contestant.id),
         questionAndAnswer: questionAndAnswerScores.filter(s => s.contestantId === contestant.id),
-        finalRound: finalRoundScores.filter(s => s.contestantId === contestant.id)
       }
 
       const categories = [
@@ -314,25 +318,12 @@ const app = new Elysia({ prefix: '/api' })
           })),
           average: calculateAverage(contestantScores.questionAndAnswer.map(s => s.score))
         },
-        {
-          name: "Final Round",
-          subCategories: Object.values(FinalRoundSubCategory).map(subCategory => ({
-            name: subCategory,
-            judgeScores: judges.map(judge => ({
-              judge,
-              score: contestantScores.finalRound.find(s => s.subCategory === subCategory && s.judgeId === judge.id)?.score || 0
-            })),
-            average: calculateAverage(contestantScores.finalRound.filter(s => s.subCategory === subCategory).map(s => s.score))
-          })),
-          average: calculateAverage(contestantScores.finalRound.map(s => s.score))
-        }
       ]
 
       const overallAverage = calculateAverage([
         ...contestantScores.swimwear,
         ...contestantScores.formalAttire,
         ...contestantScores.questionAndAnswer,
-        ...contestantScores.finalRound
       ].map(s => s.score))
 
       return { contestant, categories, overallAverage }
@@ -355,19 +346,23 @@ const app = new Elysia({ prefix: '/api' })
     return { topMales, topFemales }
   }, {
     response: t.Object({
-      topFemales: t.Array(t.Object({
-        contestant: t.Object({
-          id: t.String(),
-          name: t.String(),
-          gender: t.String()
-        })
-      })),
       topMales: t.Array(t.Object({
         contestant: t.Object({
           id: t.String(),
+          contestantNumber: t.Number(),
           name: t.String(),
           gender: t.String()
-        })
+        }),
+        overallAverage: t.Number()
+      })),
+      topFemales: t.Array(t.Object({
+        contestant: t.Object({
+          id: t.String(),
+          contestantNumber: t.Number(),
+          name: t.String(),
+          gender: t.String()
+        }),
+        overallAverage: t.Number()
       }))
     })
   })

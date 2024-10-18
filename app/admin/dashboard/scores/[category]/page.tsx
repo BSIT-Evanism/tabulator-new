@@ -16,6 +16,8 @@ const formatText = (text: string) => {
     return text.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ')
 }
 
+export const dynamic = 'force-dynamic';
+
 export default async function CategoryScoresPage({ params }: { params: { category: string } }) {
     const category = params.category.toUpperCase()
     const contestants = await prisma.contestant.findMany()
@@ -39,10 +41,15 @@ export default async function CategoryScoresPage({ params }: { params: { categor
             throw new Error(`Invalid category: ${category}`)
     }
 
-    const topcontestants = await client.api.topcontestants.get()
+    // const topcontestanttest = await client.api.topcontestants.get()
+    const topcontestant = await fetch(`${process.env.BACKEND_URL!}/api/topcontestants`)
+    const topcontestants = await topcontestant.json()
 
-    const topMaleArray = topcontestants.data?.topMales.map(male => male.contestant.id) ?? []
-    const topFemaleArray = topcontestants.data?.topFemales.map(female => female.contestant.id) ?? []
+    console.log("topcontestantsfinalmale", topcontestants.topMales)
+    console.log("topcontestantsfinalfemale", topcontestants.topFemales)
+
+    const topMaleArray = topcontestants.topMales.map((male: any) => male.contestant.id) ?? []
+    const topFemaleArray = topcontestants.topFemales.map((female: any) => female.contestant.id) ?? []
 
     const organizedScores = contestants.map(contestant => {
         const contestantScores = scores.filter(s => s.contestantId === contestant.id)
@@ -58,12 +65,15 @@ export default async function CategoryScoresPage({ params }: { params: { categor
         return { contestant, judgeScores, totalScore, averageScore }
     })
 
-    const maleContestants = category === 'FINALROUND' ? organizedScores.filter(score => score.contestant.gender === 'MALE' && topMaleArray.includes(score.contestant.id))
-        .sort((a, b) => a.contestant.contestantNumber - b.contestant.contestantNumber) : organizedScores.filter(score => score.contestant.gender === 'MALE')
-            .sort((a, b) => a.contestant.contestantNumber - b.contestant.contestantNumber)
-    const femaleContestants = category === 'FINALROUND' ? organizedScores.filter(score => score.contestant.gender === 'FEMALE' && topFemaleArray.includes(score.contestant.id))
-        .sort((a, b) => a.contestant.contestantNumber - b.contestant.contestantNumber) : organizedScores.filter(score => score.contestant.gender === 'FEMALE')
-            .sort((a, b) => a.contestant.contestantNumber - b.contestant.contestantNumber)
+    const maleContestants = organizedScores.filter(score =>
+        score.contestant.gender === 'MALE' &&
+        (category !== 'FINALROUND' || topMaleArray.includes(score.contestant.id))
+    ).sort((a, b) => a.contestant.contestantNumber - b.contestant.contestantNumber)
+
+    const femaleContestants = organizedScores.filter(score =>
+        score.contestant.gender === 'FEMALE' &&
+        (category !== 'FINALROUND' || topFemaleArray.includes(score.contestant.id))
+    ).sort((a, b) => a.contestant.contestantNumber - b.contestant.contestantNumber)
 
     const addRankings = (contestants) => {
         return contestants.map((contestant, index, array) => ({
@@ -80,7 +90,7 @@ export default async function CategoryScoresPage({ params }: { params: { categor
             <TableHeader>
                 <TableRow>
                     <TableHead>Candidate Number</TableHead>
-                    <TableHead>Contestant</TableHead>
+                    <TableHead>Department</TableHead>
                     {judges.map(judge => (
                         <TableHead key={judge.id}>Judge {judge.name}</TableHead>
                     ))}
