@@ -102,6 +102,9 @@ export async function AdminDashboardComponent() {
       <Suspense fallback={<div>Loading...</div>}>
         <ContestantList onDelete={handleDeleteContestant} />
       </Suspense>
+      <p className='text-xs text-gray-500 text-center'>
+        Made with ❤️ by <Link href="https://github.com/BSIT-Evanism" className='text-purple-500 underline' target="_blank">Evan Solanoy</Link> and GDSC Bicol University.
+      </p>
     </div>
   )
 }

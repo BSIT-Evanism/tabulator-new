@@ -12,15 +12,10 @@ export async function HomeScreen() {
   return (
     <div className={cn("min-h-screen bg-gradient-to-br from-pink-100 flex flex-col items-center justify-center p-4 relative overflow-hidden", data?.color ? data.color : "bg-pink-100")}>
       {/* Patterned Background */}
-      <div className="absolute inset-0 opacity-10">
-        <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80">
-          <path d="M0 0h80v80H0z" fill="none" />
-          <path d="M20 20c10 0 10 10 20 10s10-10 20-10 10 10 20 10M20 40c10 0 10 10 20 10s10-10 20-10 10 10 20 10M20 60c10 0 10 10 20 10s10-10 20-10 10 10 20 10" stroke="currentColor" strokeWidth="2" fill="none" />
-        </svg>
-      </div>
+      <video className="fixed inset-0 opacity-10  h-full top-0" src="/uploads/bg-vid.mp4" autoPlay loop muted />
 
       {/* Main Content */}
-      <div className="max-w-md w-full space-y-8 text-center relative z-10">
+      <div className="max-w-md w-full backdrop-blur-sm bg-white/30 rounded-xl p-6 space-y-8 text-center relative z-10">
         <div className="space-y-2">
           <h1 className="text-4xl font-bold tracking-tight text-pink-600 flex items-center justify-center">
             {data?.iconName ? <img src={`/uploads/${data.iconName}`} alt="Event Icon" className="w-10 h-10 mr-2" /> : <Crown className="w-10 h-10 mr-2 text-yellow-400 animate-pulse" />}
@@ -59,9 +54,12 @@ export async function HomeScreen() {
       </div>
 
       {/* Footer */}
-      <footer className="mt-8 text-sm text-gray-600 relative z-10">
-        © 2024 Model Pageant. All rights reserved.
+      <footer className="mt-8 pb-2 text-sm text-gray-600 relative z-10">
+        © 2024 GDSC Bicol University. All rights reserved.
       </footer>
+      <p className='text-xs absolute bottom-0 text-gray-500 text-center'>
+        Made with ❤️ by <Link href="https://github.com/BSIT-Evanism" className='text-purple-500 underline' target="_blank">Evan Solanoy</Link> and GDSC Bicol University.
+      </p>
     </div>
   )
 }
