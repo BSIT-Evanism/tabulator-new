@@ -118,7 +118,7 @@ const ScoreInput = ({ category, contestant, subCategory, value, onChange }: { ca
 
   return (
     <motion.div
-      className="flex justify-center items-center gap-2 p-1 bg-white rounded-lg overflow-hidden relative"
+      className="flex justify-center items-center gap-2 p-1 bg-white rounded-lg overflow-hidden relative border border-gray-200"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.3 }}
@@ -134,7 +134,7 @@ const ScoreInput = ({ category, contestant, subCategory, value, onChange }: { ca
         inputMode="numeric"
         pattern="[0-9]*"
         id={`${category.id}-${contestant.id}-${subCategory}`}
-        className="w-24 h-10 p-2 text-lg rounded-md bg-transparent z-10 focus:outline-none text-center"
+        className="w-24 h-10 p-2 text-lg rounded-md bg-transparent z-10 focus:outline-none focus:ring-2 focus:ring-purple-500 text-center"
         value={localValue}
         onChange={handleInputChange}
       />
@@ -216,6 +216,7 @@ export function ScoringPageComponent({ contestants, judge, topMales, topFemales 
   }
 
   const handleScoreChange = (contestantId: string, category: string, subCategory: string, score: number | null) => {
+    // @ts-expect-error - score type mismatch with API expectation
     setScores(prevScores => ({
       ...prevScores,
       [category]: {
@@ -300,11 +301,18 @@ export function ScoringPageComponent({ contestants, judge, topMales, topFemales 
     a.contestantNumber - b.contestantNumber
   );
 
+  const calculateTotalScore = (categoryId: string, contestantId: string) => {
+    const categoryScores = scores[categoryId]?.[contestantId] || {};
+    return Object.values(categoryScores).reduce((total, score) => total + (score || 0), 0);
+  };
+
   return (
     <div className={cn("min-h-screen bg-gradient-to-br from-pink-100 to-purple-100 p-8", isLocked ? 'cursor-not-allowed' : '')}>
       <Button variant="link" className='absolute top-4 right-4' onClick={judgeLogout}><LogOutIcon className="w-4 h-4 mr-2" />Logout</Button>
       <h1 className="text-3xl font-bold text-center text-purple-800 mb-8">MMBU 2024 Scoring</h1>
-
+      <p className='text-center text-gray-600'>
+        Welcome, {judge?.name}
+      </p>
       {/* Display current state */}
       <div className="mb-4 text-center">
         <span className="font-semibold">Current Stage: </span>
@@ -375,49 +383,69 @@ export function ScoringPageComponent({ contestants, judge, topMales, topFemales 
                           .filter(contestant =>
                             (contestant.gender === 'MALE'))
                           .map(contestant => (
-                            <div key={contestant.id} className="space-y-4">
-                              <div className="flex items-center justify-between">
+                            <Card key={contestant.id} className="p-4 space-y-4 bg-white shadow-sm">
+                              <div className="flex items-center justify-between border-b pb-2">
                                 <h3 className="text-lg font-semibold">Contestant {contestant.contestantNumber}</h3>
-                                <Badge variant="outline" className="text-sm uppercase rounded-full bg-blue-500 text-white">MALE</Badge>
-                              </div>
-                              {category.subCategories.map(subCategory => (
-                                <div key={subCategory} className="flex items-center space-x-4 w-fit">
-                                  <Label htmlFor={`${category.id}-${contestant.id}-${subCategory}`} className="w-40 text-right">{subCategory.replace(/_/g, ' ')}</Label>
-                                  <ScoreInput
-                                    category={category}
-                                    contestant={contestant}
-                                    subCategory={subCategory}
-                                    value={scores[category.id]?.[contestant.id]?.[subCategory]}
-                                    onChange={handleScoreChange}
-                                  />
-                                  <span className="text-sm text-gray-500 ml-2">
-                                    Max: {maxScoresOuter[category.id as keyof typeof maxScoresOuter]?.[subCategory as keyof (typeof maxScoresOuter)[keyof typeof maxScoresOuter]] ?? 15}
-                                  </span>
+                                <div className="flex items-center gap-4">
+                                  <Badge variant="outline" className={`text-sm uppercase rounded-full ${contestant.gender === 'MALE' ? 'bg-blue-500' : 'bg-pink-500'} text-white`}>
+                                    {contestant.gender}
+                                  </Badge>
+                                  <div className="flex items-center gap-2 bg-purple-50 px-4 py-1 rounded-full">
+                                    <span className="text-sm text-purple-600 font-medium">Total Score:</span>
+                                    <span className="text-lg font-bold text-purple-700">{calculateTotalScore(category.id, contestant.id)}</span>
+                                  </div>
                                 </div>
-                              ))}
-                            </div>
+                              </div>
+                              <div className="space-y-3">
+                                {category.subCategories.map(subCategory => (
+                                  <div key={subCategory} className="flex items-center space-x-4 w-fit">
+                                    <Label htmlFor={`${category.id}-${contestant.id}-${subCategory}`} className="w-40 text-right">{subCategory.replace(/_/g, ' ')}</Label>
+                                    <ScoreInput
+                                      category={category}
+                                      contestant={contestant}
+                                      subCategory={subCategory}
+                                      value={scores[category.id]?.[contestant.id]?.[subCategory]}
+                                      onChange={handleScoreChange}
+                                    />
+                                    <span className="text-sm text-gray-500 ml-2">
+                                      Max: {maxScoresOuter[category.id as keyof typeof maxScoresOuter]?.[subCategory as keyof (typeof maxScoresOuter)[keyof typeof maxScoresOuter]] ?? 15}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </Card>
                           )) : sortedContestants.filter(contestant => (contestant.gender === 'MALE' && topMales.includes(contestant.id))).map(contestant => (
-                            <div key={contestant.id} className="space-y-4">
-                              <div className="flex items-center justify-between">
+                            <Card key={contestant.id} className="p-4 space-y-4 bg-white shadow-sm">
+                              <div className="flex items-center justify-between border-b pb-2">
                                 <h3 className="text-lg font-semibold">Contestant {contestant.contestantNumber}</h3>
-                                <Badge variant="outline" className="text-sm uppercase rounded-full bg-blue-500 text-white">MALE</Badge>
-                              </div>
-                              {category.subCategories.map(subCategory => (
-                                <div key={subCategory} className="flex items-center space-x-4 w-fit">
-                                  <Label htmlFor={`${category.id}-${contestant.id}-${subCategory}`} className="w-40 text-right">{subCategory.replace(/_/g, ' ')}</Label>
-                                  <ScoreInput
-                                    category={category}
-                                    contestant={contestant}
-                                    subCategory={subCategory}
-                                    value={scores[category.id]?.[contestant.id]?.[subCategory]}
-                                    onChange={handleScoreChange}
-                                  />
-                                  <span className="text-sm text-gray-500 ml-2">
-                                    Max: {maxScoresOuter[category.id as keyof typeof maxScoresOuter]?.[subCategory as keyof (typeof maxScoresOuter)[keyof typeof maxScoresOuter]] ?? 15}
-                                  </span>
+                                <div className="flex items-center gap-4">
+                                  <Badge variant="outline" className={`text-sm uppercase rounded-full ${contestant.gender === 'MALE' ? 'bg-blue-500' : 'bg-pink-500'} text-white`}>
+                                    {contestant.gender}
+                                  </Badge>
+                                  <div className="flex items-center gap-2 bg-purple-50 px-4 py-1 rounded-full">
+                                    <span className="text-sm text-purple-600 font-medium">Total Score:</span>
+                                    <span className="text-lg font-bold text-purple-700">{calculateTotalScore(category.id, contestant.id)}</span>
+                                  </div>
                                 </div>
-                              ))}
-                            </div>
+                              </div>
+                              <div className="space-y-3">
+                                {category.subCategories.map(subCategory => (
+                                  <div key={subCategory} className="flex items-center space-x-4 w-fit">
+                                    <Label htmlFor={`${category.id}-${contestant.id}-${subCategory}`} className="w-40 text-right">{subCategory.replace(/_/g, ' ')}</Label>
+                                    <ScoreInput
+                                      category={category}
+                                      contestant={contestant}
+                                      subCategory={subCategory}
+                                      value={scores[category.id]?.[contestant.id]?.[subCategory]}
+                                      onChange={handleScoreChange}
+                                    />
+                                    <span className="text-sm text-gray-500 ml-2">
+                                      Max: {maxScoresOuter[category.id as keyof typeof maxScoresOuter]?.[subCategory as keyof (typeof maxScoresOuter)[keyof typeof maxScoresOuter]] ?? 15}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </Card>
                           ))}
                       </div>
                       <div className="space-y-4">
@@ -425,49 +453,69 @@ export function ScoringPageComponent({ contestants, judge, topMales, topFemales 
                           .filter(contestant =>
                             contestant.gender === 'FEMALE')
                           .map(contestant => (
-                            <div key={contestant.id} className="space-y-4">
-                              <div className="flex items-center justify-between">
+                            <Card key={contestant.id} className="p-4 space-y-4 bg-white shadow-sm">
+                              <div className="flex items-center justify-between border-b pb-2">
                                 <h3 className="text-lg font-semibold">Contestant {contestant.contestantNumber}</h3>
-                                <Badge variant="outline" className="text-sm uppercase rounded-full bg-pink-500 text-white">FEMALE</Badge>
-                              </div>
-                              {category.subCategories.map(subCategory => (
-                                <div key={subCategory} className="flex items-center space-x-4 w-fit">
-                                  <Label htmlFor={`${category.id}-${contestant.id}-${subCategory}`} className="w-40 text-right">{subCategory.replace(/_/g, ' ')}</Label>
-                                  <ScoreInput
-                                    category={category}
-                                    contestant={contestant}
-                                    subCategory={subCategory}
-                                    value={scores[category.id]?.[contestant.id]?.[subCategory]}
-                                    onChange={handleScoreChange}
-                                  />
-                                  <span className="text-sm text-gray-500 ml-2">
-                                    Max: {maxScoresOuter[category.id as keyof typeof maxScoresOuter]?.[subCategory as keyof (typeof maxScoresOuter)[keyof typeof maxScoresOuter]] ?? 15}
-                                  </span>
+                                <div className="flex items-center gap-4">
+                                  <Badge variant="outline" className={`text-sm uppercase rounded-full ${contestant.gender === 'MALE' ? 'bg-blue-500' : 'bg-pink-500'} text-white`}>
+                                    {contestant.gender}
+                                  </Badge>
+                                  <div className="flex items-center gap-2 bg-purple-50 px-4 py-1 rounded-full">
+                                    <span className="text-sm text-purple-600 font-medium">Total Score:</span>
+                                    <span className="text-lg font-bold text-purple-700">{calculateTotalScore(category.id, contestant.id)}</span>
+                                  </div>
                                 </div>
-                              ))}
-                            </div>
+                              </div>
+                              <div className="space-y-3">
+                                {category.subCategories.map(subCategory => (
+                                  <div key={subCategory} className="flex items-center space-x-4 w-fit">
+                                    <Label htmlFor={`${category.id}-${contestant.id}-${subCategory}`} className="w-40 text-right">{subCategory.replace(/_/g, ' ')}</Label>
+                                    <ScoreInput
+                                      category={category}
+                                      contestant={contestant}
+                                      subCategory={subCategory}
+                                      value={scores[category.id]?.[contestant.id]?.[subCategory]}
+                                      onChange={handleScoreChange}
+                                    />
+                                    <span className="text-sm text-gray-500 ml-2">
+                                      Max: {maxScoresOuter[category.id as keyof typeof maxScoresOuter]?.[subCategory as keyof (typeof maxScoresOuter)[keyof typeof maxScoresOuter]] ?? 15}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </Card>
                           )) : sortedContestants.filter(contestant => (contestant.gender === 'FEMALE' && topFemales.includes(contestant.id))).map(contestant => (
-                            <div key={contestant.id} className="space-y-4">
-                              <div className="flex items-center justify-between">
+                            <Card key={contestant.id} className="p-4 space-y-4 bg-white shadow-sm">
+                              <div className="flex items-center justify-between border-b pb-2">
                                 <h3 className="text-lg font-semibold">Contestant {contestant.contestantNumber}</h3>
-                                <Badge variant="outline" className="text-sm uppercase rounded-full bg-pink-500 text-white">FEMALE</Badge>
-                              </div>
-                              {category.subCategories.map(subCategory => (
-                                <div key={subCategory} className="flex items-center space-x-4 w-fit">
-                                  <Label htmlFor={`${category.id}-${contestant.id}-${subCategory}`} className="w-40 text-right">{subCategory.replace(/_/g, ' ')}</Label>
-                                  <ScoreInput
-                                    category={category}
-                                    contestant={contestant}
-                                    subCategory={subCategory}
-                                    value={scores[category.id]?.[contestant.id]?.[subCategory]}
-                                    onChange={handleScoreChange}
-                                  />
-                                  <span className="text-sm text-gray-500 ml-2">
-                                    Max: {maxScoresOuter[category.id as keyof typeof maxScoresOuter]?.[subCategory as keyof (typeof maxScoresOuter)[keyof typeof maxScoresOuter]] ?? 15}
-                                  </span>
+                                <div className="flex items-center gap-4">
+                                  <Badge variant="outline" className={`text-sm uppercase rounded-full ${contestant.gender === 'MALE' ? 'bg-blue-500' : 'bg-pink-500'} text-white`}>
+                                    {contestant.gender}
+                                  </Badge>
+                                  <div className="flex items-center gap-2 bg-purple-50 px-4 py-1 rounded-full">
+                                    <span className="text-sm text-purple-600 font-medium">Total Score:</span>
+                                    <span className="text-lg font-bold text-purple-700">{calculateTotalScore(category.id, contestant.id)}</span>
+                                  </div>
                                 </div>
-                              ))}
-                            </div>
+                              </div>
+                              <div className="space-y-3">
+                                {category.subCategories.map(subCategory => (
+                                  <div key={subCategory} className="flex items-center space-x-4 w-fit">
+                                    <Label htmlFor={`${category.id}-${contestant.id}-${subCategory}`} className="w-40 text-right">{subCategory.replace(/_/g, ' ')}</Label>
+                                    <ScoreInput
+                                      category={category}
+                                      contestant={contestant}
+                                      subCategory={subCategory}
+                                      value={scores[category.id]?.[contestant.id]?.[subCategory]}
+                                      onChange={handleScoreChange}
+                                    />
+                                    <span className="text-sm text-gray-500 ml-2">
+                                      Max: {maxScoresOuter[category.id as keyof typeof maxScoresOuter]?.[subCategory as keyof (typeof maxScoresOuter)[keyof typeof maxScoresOuter]] ?? 15}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </Card>
                           ))}
                       </div>
                     </div>
